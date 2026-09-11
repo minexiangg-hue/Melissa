@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YourEnglishTeacher — AI 英语虚拟教师 项目规划</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --card: #1a1a24;
+    --card2: #1e1e2a;
+    --text: #e0e0e8;
+    --muted: #909098;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --green: #00d2a0;
+    --orange: #f39c12;
+    --red: #e74c3c;
+    --blue: #3498db;
+    --teal: #1abc9c;
+    --border: #2a2a3a;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ── HERO ──────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f14 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 80px 40px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(108,92,231,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 40%, rgba(0,210,160,0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent2), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .hero .subtitle {
+    font-size: 1.25rem;
+    color: var(--muted);
+    max-width: 640px;
+    margin: 0 auto 32px;
+    position: relative;
+  }
+  .hero .badge-row {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+    position: relative;
+  }
+  .badge {
+    padding: 6px 18px; border-radius: 20px;
+    font-size: 0.85rem; font-weight: 600;
+    border: 1px solid var(--border); background: var(--card);
+  }
+  .badge.green  { border-color: var(--green); color: var(--green); }
+  .badge.purple { border-color: var(--accent2); color: var(--accent2); }
+  .badge.blue   { border-color: var(--blue); color: var(--blue); }
+  .badge.orange { border-color: var(--orange); color: var(--orange); }
+
+  /* ── LAYOUT ─────────────────────────── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; }
+  section + section { border-top: 1px solid var(--border); }
+
+  h2 {
+    font-size: 1.65rem; font-weight: 700;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2 .icon { font-size: 1.4rem; }
+  .section-desc { color: var(--muted); margin-bottom: 32px; }
+
+  /* ── Q&A CARDS ──────────────────────── */
+  .qa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+  }
+  .qa-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    transition: border-color 0.2s;
+  }
+  .qa-card:hover { border-color: var(--accent); }
+  .qa-card .q {
+    font-weight: 700; color: var(--accent2);
+    margin-bottom: 12px; font-size: 0.95rem;
+  }
+  .qa-card .a {
+    color: var(--text); font-size: 0.93rem;
+    line-height: 1.8;
+  }
+  .qa-card .a ul { padding-left: 18px; margin: 8px 0; }
+  .qa-card .a li { margin-bottom: 4px; }
+  .qa-card .tag {
+    display: inline-block; padding: 3px 12px; border-radius: 12px;
+    font-size: 0.78rem; font-weight: 600; margin-top: 14px;
+  }
+  .tag.recommend { background: rgba(0,210,160,0.12); color: var(--green); }
+  .tag.caution   { background: rgba(243,156,18,0.12); color: var(--orange); }
+  .tag.future    { background: rgba(52,152,219,0.12); color: var(--blue); }
+
+  /* ── ARCHITECTURE DIAGRAM ───────────── */
+  .arch-diagram {
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .arch-layer {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+  }
+  .arch-box {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    min-width: 150px; text-align: center;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .arch-box:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .arch-box .box-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+  .arch-box .box-desc  { font-size: 0.78rem; color: var(--muted); }
+  .arch-box.accent { border-color: var(--accent); background: rgba(108,92,231,0.08); }
+  .arch-box.green  { border-color: var(--green);  background: rgba(0,210,160,0.06); }
+  .arch-box.blue   { border-color: var(--blue);   background: rgba(52,152,219,0.06); }
+  .arch-box.orange { border-color: var(--orange); background: rgba(243,156,18,0.06); }
+  .arch-arrow {
+    text-align: center; color: var(--muted); font-size: 1.2rem;
+    letter-spacing: 4px;
+  }
+
+  /* ── ROADMAP ────────────────────────── */
+  .phase-list { display: flex; flex-direction: column; gap: 20px; }
+  .phase {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+    display: flex;
+  }
+  .phase-bar {
+    width: 8px; flex-shrink: 0;
+  }
+  .phase-bar.now  { background: linear-gradient(180deg, var(--green), var(--teal)); }
+  .phase-bar.next { background: linear-gradient(180deg, var(--orange), #e67e22); }
+  .phase-bar.future { background: linear-gradient(180deg, var(--accent), var(--blue)); }
+  .phase-body { padding: 24px 28px; flex: 1; }
+  .phase-body h3 { font-size: 1.1rem; margin-bottom: 6px; }
+  .phase-body .phase-tag {
+    display: inline-block; padding: 2px 12px; border-radius: 10px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .phase-items { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  @media (max-width: 700px) { .phase-items { grid-template-columns: 1fr; } }
+  .phase-items li { font-size: 0.88rem; color: var(--muted); }
+  .phase-items li.done { color: var(--green); text-decoration: line-through; }
+
+  /* ── TECH STACK ─────────────────────── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .stack-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .stack-card h4 { font-size: 0.95rem; margin-bottom: 6px; }
+  .stack-card p  { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+  .stack-card .choice {
+    display: inline-block; margin-top: 8px;
+    padding: 2px 10px; border-radius: 8px;
+    font-size: 0.75rem; font-weight: 700;
+    background: rgba(108,92,231,0.15); color: var(--accent2);
+  }
+
+  /* ── PRICING ────────────────────────── */
+  .pricing-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  .price-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 32px 28px;
+    flex: 1; min-width: 240px; max-width: 340px;
+    text-align: center;
+  }
+  .price-card.featured { border-color: var(--accent); transform: scale(1.03); }
+  .price-card h3 { font-size: 1.2rem; margin-bottom: 4px; }
+  .price-card .price { font-size: 2rem; font-weight: 800; margin: 12px 0 4px; }
+  .price-card .price small { font-size: 0.7em; color: var(--muted); font-weight: 400; }
+  .price-card ul { list-style: none; padding: 0; margin: 16px 0; text-align: left; }
+  .price-card li { padding: 5px 0; font-size: 0.88rem; }
+  .price-card li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+
+  /* ── RISK TABLE ─────────────────────── */
+  .risk-table { width: 100%; border-collapse: collapse; }
+  .risk-table th, .risk-table td {
+    padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .risk-table th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
+  .risk-table .risk-high { color: var(--red); font-weight: 700; }
+  .risk-table .risk-med  { color: var(--orange); font-weight: 700; }
+  .risk-table .risk-low  { color: var(--green); font-weight: 700; }
+
+  /* ── FOOTER ─────────────────────────── */
+  footer {
+    text-align: center; padding: 32px;
+    color: var(--muted); font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="hero">
+  <h1>YourEnglishTeacher</h1>
+  <p class="subtitle">
+    AI 驱动的个性化英语口语教练 — 融合虚拟人格、语音交互与自适应学习，<br>让每个学习者拥有自己专属的"英语私教"。
+  </p>
+  <div class="badge-row">
+    <span class="badge green">🎯 口语优先</span>
+    <span class="badge purple">🧠 Agent 架构</span>
+    <span class="badge blue">🎙️ 语音交互</span>
+    <span class="badge orange">📊 自适应学习</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ═══════════════ PRODUCT VISION ═══════════════ -->
+<section>
+  <h2><span class="icon">🔭</span> 产品愿景与差异化</h2>
+  <p class="section-desc">为什么市面上需要又一个英语学习产品？因为现有的产品内容<strong>固定、非个性化</strong>，而生成式 AI 从根本上改变了这一局面。</p>
+
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">📖 传统产品的核心痛点</div>
+      <div class="a">
+        <ul>
+          <li><strong>内容固定：</strong>市面产品以背单词/微课为核心，内容千人一面</li>
+          <li><strong>缺乏互动：</strong>口语练习依赖真人外教，成本高、时间受限</li>
+          <li><strong>无自适应：</strong>无法根据用户当前水平动态调整难度和内容</li>
+          <li><strong>参与感弱：</strong>缺乏人格化的"教师"形象，用户难以建立学习情感连接</li>
+        </ul>
+      </div>
+    </div>
+    <div class="qa-card">
+      <div class="q">✨ 我们要做的差异化</div>
+      <div class="a">
+        <ul>
+          <li><strong>人格化虚拟教师：</strong>Iconic 角色设计 + 可切换人格，建立情感纽带</li>
+          <li><strong>AI 原生自适应：</strong>基于用户画像+英语水平+学习目标，实时生成定制内容</li>
+          <li><strong>真实语音对话：</strong>语音识别 → Agent 处理 → 自然人声合成，全链路闭环</li>
+          <li><strong>成本革命：</strong>目标成本远低于真人外教，甚至低于市面上多数录播课程</li>
+          <li><strong>情景化学习：</strong>未来实现有故事脉络的沉浸式英语学习世界</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ KEY QUESTIONS ANSWERED ═══════════════ -->
+<section>
+  <h2><span class="icon">❓</span> 立项说明中的关键问题 &amp; 我的回答</h2>
+  <p class="section-desc">针对 instructions 中提出的技术选型与产品决策问题，逐一分析并给出推荐方案。</p>
+
+  <div class="qa-grid">
+    <!-- Q1: Voice -->
+    <div class="qa-card">
+      <div class="q">🎙️ Q1: 语音识别与语音合成 — 如何实现"不机械"的人声效果？当前能做到吗？</div>
+      <div class="a">
+        <p><strong>答：完全可以做到，且已有成熟方案。</strong></p>
+        <br>
+        <p><strong>语音识别 (STT)：</strong></p>
+        <ul>
+          <li>首选 → <strong>OpenAI Whisper (API或开源whisper-large-v3)</strong>：多语言、强抗噪，英语识别准确率接近人类水平</li>
+          <li>备选 → Deepgram / Azure Speech，延迟更低、流式支持更好，适合实时对话</li>
+        </ul>
+        <br>
+        <p><strong>语音合成 (TTS) — 核心体验层：</strong></p>
+        <ul>
+          <li><strong>推荐方案一：OpenAI TTS (tts-1 / tts-1-hd)</strong> — 自然度高，支持流式，6种预设音色，可直接使用</li>
+          <li><strong>推荐方案二：ElevenLabs</strong> — 业界最佳自然度，支持声音克隆与情感控制，但成本稍高</li>
+          <li><strong>方案三 (开源自建)：</strong>XTTS-v2 / ChatTTS / Fish-Speech — 质量快速提升中，适合长期降本</li>
+        </ul>
+        <br>
+        <p><strong>底层判断：</strong>2024-2026 TTS 质量已跨越"恐怖谷"门槛。ElevenLabs 的对话式语音已几乎无法与真人区分。技术的成熟度<strong>不是瓶颈</strong>，关键在于选择合适的成本-质量平衡点。</p>
+        <span class="tag recommend">✅ 推荐: OpenAI TTS (初期) + ElevenLabs (精品路线)</span>
+      </div>
+    </div>
+
+    <!-- Q2: Learning Material Generation -->
+    <div class="qa-card" style="grid-column: 1 / -1;">
+      <div class="q">📚 Q2: 学习资料生成 — 参考数据库 vs 微调模型？你有成熟的方案吗？</div>
+      <div class="a">
+        <p><strong>答：不走"存教材原文"的路线。推荐构建一套「教材编写指南」——本质是一套内化了英语教学方法的 Prompt Engineering 产物。</strong></p>
+        <br>
+        <p><strong>核心理念类比：</strong>一个有 20 年经验的英语老师，他读过无数教材但从<strong>不照抄</strong>——他输出的内容是基于方法论内化后的原创教学。我们要在 Agent 里复制的就是这个能力。</p>
+        <br>
+
+        <p><strong>方案对比：</strong></p>
+        <table style="width:100%; font-size:0.82rem; border-collapse:collapse; margin:12px 0;">
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;"><strong>维度</strong></td>
+            <td style="padding:8px;">❌ RAG + 教材原文</td>
+            <td style="padding:8px;">❌ 微调模型</td>
+            <td style="padding:8px; color:var(--green);"><strong>✅ 教材编写指南</strong></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">数据库里存什么</td>
+            <td style="padding:8px; color:var(--red);">教材片段/embedding</td>
+            <td style="padding:8px; color:var(--orange);">训练权重</td>
+            <td style="padding:8px; color:var(--green);">提炼后的教学法元规则（自然语言）</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">生成方式</td>
+            <td style="padding:8px;">检索 → 改写（衍生作品风险）</td>
+            <td style="padding:8px;">模型推理</td>
+            <td style="padding:8px; color:var(--green);">规则驱动原创生成</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">版权风险</td>
+            <td style="padding:8px; color:var(--red);">🔴 高</td>
+            <td style="padding:8px; color:var(--green);">🟢 无</td>
+            <td style="padding:8px; color:var(--green);">🟢 极低</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">教学质量</td>
+            <td style="padding:8px;">结构有据可循</td>
+            <td style="padding:8px; color:var(--orange);">需大量高质量数据</td>
+            <td style="padding:8px; color:var(--green);">方法论内化，结构科学</td>
+          </tr>
+          <tr>
+            <td style="padding:8px;">迭代成本</td>
+            <td style="padding:8px;">维护向量库</td>
+            <td style="padding:8px; color:var(--red);">定期重训，成本高</td>
+            <td style="padding:8px; color:var(--green);">改 Prompt 即迭代</td>
+          </tr>
+        </table>
+        <br>
+
+        <p><strong>💡 「教材编写指南」如何构建：</strong></p>
+        <p>输入：多本权威教材（人工阅读、理解、消化）</p>
+        <p style="text-align:center;font-size:1.2rem;color:var(--muted);">⬇ 提炼（不是复制）</p>
+        <p>输出：一套编码在 System Prompt 中的<strong>教学法元规则</strong>，包括：</p>
+        <ul>
+          <li>各 CEFR 级别的主题范围与典型对话场景类型</li>
+          <li>词汇/语法引入顺序规律（如"先教现在时再教过去时"）</li>
+          <li>口语练习形式设计原则（角色扮演、信息差、任务型对话…）</li>
+          <li>螺旋复习节奏（什么时候复习旧知识、什么时候引入新知识）</li>
+          <li>纠错策略（什么时候纠、怎么纠、纠到什么程度）</li>
+        </ul>
+        <p style="margin-top:10px;">调用路径：<strong>用户画像 + CEFR级别 + 这套编写指南 → Agent 生成<strong>完全原创</strong>的学习资料</strong></p>
+
+        <p style="margin-top:14px;"><strong>关键法律判断：</strong>"教过去时之前先教一般现在时"是一个教学逻辑，不是版权表达。方法论不受版权保护。我们存的是<strong>规则</strong>，不是<strong>作品</strong>。</p>
+
+        <p style="margin-top:10px;"><strong>唯一注意：</strong>提炼过程<strong>不要自动化批量扒书</strong>（爬虫风险）。人工阅读→总结方法论→写入 Prompt——这条路干干净净。</p>
+
+        <p style="margin-top:10px;"><strong>长期（Phase 3+）：</strong>积累 ≥10万条高质量用户对话后，微调教学专用小模型（Llama-8B 级别）用于降低推理成本。微调用的是<strong>自有交互数据</strong>，不涉及第三方版权。</p>
+        <span class="tag recommend">✅ 推荐: 教材编写指南 (Prompt Engineering元规则) → Agent原创生成 → 长期微调降本</span>
+      </div>
+    </div>
+
+    <!-- Q3: Platform -->
+    <div class="qa-card">
+      <div class="q">📱 Q3: 初始阶段做网站还是移动端/桌面端 App？</div>
+      <div class="a">
+        <p><strong>答：Web 优先，但要为移动端做适配设计。</strong></p>
+        <br>
+        <p><strong>决策逻辑：</strong></p>
+        <ul>
+          <li><strong>Web 胜在分发：</strong>无需安装、一个链接即可分享、迭代速度快 10 倍。对于"验证产品-市场匹配"的早期阶段，Web 是最佳载体</li>
+          <li><strong>语音在 Web 上完全可行：</strong>Web Speech API + MediaRecorder API 已经足够覆盖 STT 场景，AudioContext 可以播放 TTS 音频流。不需要原生能力</li>
+          <li><strong>移动端 PWA：</strong>用 PWA (Progressive Web App) 可以先做到"添加到主屏幕"、离线缓存、推送通知，体验接近原生 App</li>
+          <li><strong>桌面端 Electron → 后期考虑：</strong>初期无需投入，除非需要离线语音处理等原生能力</li>
+        </ul>
+        <br>
+        <p><strong>路线图：</strong></p>
+        <p>① MVP → <strong>响应式 Web App</strong> (桌面+移动浏览器均可) &nbsp;→&nbsp; ② 验证后 → <strong>PWA</strong> (类原生体验) &nbsp;→&nbsp; ③ 规模化后 → <strong>React Native / Flutter</strong> 原生 App</p>
+        <span class="tag recommend">✅ 推荐: Web-first (Next.js + PWA)</span>
+      </div>
+    </div>
+
+    <!-- Q4: Personality System -->
+    <div class="qa-card">
+      <div class="q">🎭 Q4: 人格切换系统与版权问题 — Trump/Snow White 能用吗？</div>
+      <div class="a">
+        <p><strong>答：需要分两个层面处理。</strong></p>
+        <br>
+        <p><strong>版权/人格权风险分层：</strong></p>
+        <ul>
+          <li><strong>🟢 安全区：</strong>历史公众人物 (Churchill, Einstein, Plato, Shakespeare) — 已过世且属于公共领域；虚构角色原型但<strong>不使用其名称和形象</strong>，只借鉴"说话风格"</li>
+          <li><strong>🟡 谨慎区：</strong>现代公众人物 (Trump) — 在美国，"声音模仿"可能涉及 Right of Publicity。可以<strong>不指名道姓</strong>地提供"自信直率、重复强调"的说话风格选项</li>
+          <li><strong>🔴 高危区：</strong>迪士尼角色 (Snow White) — 严格版权保护，<strong>绝对不能直接使用</strong>名称或形象</li>
+        </ul>
+        <br>
+        <p><strong>推荐实现方式：</strong></p>
+        <p>不直接说"用Trump风格教你英语"，而是构建一个<strong>人格光谱库</strong>——用特质标签描述风格（如"自信果断型"、"温柔鼓励型"、"严谨学者型"、"幽默风趣型"），每个风格有独立的 System Prompt。用户选择的是<strong>教学风格</strong>，而不是<strong>名人模仿</strong>。这既规避了法律风险，又更贴合教学场景的实际需求。</p>
+        <span class="tag recommend">✅ 推荐: 人格光谱库 (特质标签系统) + 历史人物作为灵感来源</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ ARCHITECTURE ═══════════════ -->
+<section>
+  <h2><span class="icon">🏗️</span> 系统架构设计 — 完整交互链路</h2>
+  <p class="section-desc">核心架构：<strong>规则引擎前置过滤</strong> → <strong>三层 Agent (Guard / Orchestrator / Teacher)</strong> → <strong>状态池 + Prompt Builder + Memory Compressor</strong> 协同。</p>
+
+  <div class="arch-diagram">
+    <!-- Layer 0: Input -->
+    <div class="arch-layer">
+      <div class="arch-box accent" style="min-width:200px;">
+        <div class="box-title">👤 用户</div>
+        <div class="box-desc">录音 → STT → 原文文本</div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇</div>
+
+    <!-- Layer 1: Pre-filter (non-LLM) -->
+    <div class="arch-layer">
+      <div class="arch-box orange" style="min-width:380px;">
+        <div class="box-title">🛡️ 输入安全过滤器 (Rule Engine · 非 LLM)</div>
+        <div class="box-desc">正则匹配攻击模式 · 长度/字符异常检测 · 语言检测<br>恶意输入直接拦截，不消耗 Token</div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇ 通过后</div>
+
+    <!-- Layer 2: Guard Agent -->
+    <div class="arch-layer">
+      <div class="arch-box orange" style="min-width:380px;">
+        <div class="box-title">🔰 Guard Agent (LLM)</div>
+        <div class="box-desc">意图分类 (按课程目标 / 模糊偏离 / 完全偏离) · 深度安全检查 · 输出意图标签 + 安全标记</div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇ 意图标签 + 安全标记</div>
+
+    <!-- Layer 3: Orchestrator -->
+    <div class="arch-layer">
+      <div class="arch-box accent" style="min-width:420px;">
+        <div class="box-title">🧠 Orchestrator Agent (调度中枢)</div>
+        <div class="box-desc">
+          ① 解读 Guard 输出的意图 → 决定下一步调度策略<br>
+          ② 写权限：更新状态池（进度、课程快照、压缩触发）<br>
+          ③ 数据安全决策：根据用户可信等级决定数据读取权限<br>
+          ④ 触发 Memory Compressor（每 N 轮压缩久远上下文）
+        </div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇ 调度指令 + 所需数据清单</div>
+
+    <!-- Layer 3.5: Prompt Builder (deterministic) -->
+    <div class="arch-layer">
+      <div class="arch-box blue" style="min-width:420px;">
+        <div class="box-title">📐 Prompt Builder (确定性组装器 · 非 Agent)</div>
+        <div class="box-desc">
+          人格 System Prompt + 状态池快照 (裁剪后) + 最近 K 轮对话 + 当前课程快照 → 组装完整 Prompt
+        </div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇ 完整 Prompt</div>
+
+    <!-- Layer 4: Teaching Agent -->
+    <div class="arch-layer">
+      <div class="arch-box green" style="min-width:380px;">
+        <div class="box-title">🗣️ Teaching Agent (LLM · 只读状态池)</div>
+        <div class="box-desc">加载指定人格 · 生成教学回应 · 纠错 · 引导 · 输出纯文本<br>不直接写状态池，不自行修改学习目标</div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇ 文本输出</div>
+
+    <!-- Layer 5: TTS + Output -->
+    <div class="arch-layer">
+      <div class="arch-box blue" style="min-width:200px;">
+        <div class="box-title">🔊 TTS Service</div>
+        <div class="box-desc">OpenAI / ElevenLabs<br>流式音频输出</div>
+      </div>
+    </div>
+    <div class="arch-arrow">⬇</div>
+    <div class="arch-layer">
+      <div class="arch-box accent" style="min-width:200px;">
+        <div class="box-title">👤 用户听到回应</div>
+        <div class="box-desc">→ 下一轮循环 ↗</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side components: State Pool + Memory Compressor -->
+  <div style="display:flex; gap:24px; margin-top:32px; flex-wrap:wrap; justify-content:center;">
+    <div class="qa-card" style="flex:1; min-width:300px; max-width:500px;">
+      <div class="q">🗄️ 状态池 (State Pool) — Orchestrator 读写 · Teacher 只读</div>
+      <div class="a">
+        <table style="width:100%; font-size:0.82rem; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px;"><strong>存储内容</strong></td>
+            <td style="padding:6px;"><strong>更新频率</strong></td>
+            <td style="padding:6px;"><strong>写入者</strong></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px;">用户画像 (水平/兴趣/目标)</td>
+            <td style="padding:6px;color:var(--muted);">会话级</td>
+            <td style="padding:6px;">Orchestrator</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px;">学习进度数据 (词汇/语法/薄弱点)</td>
+            <td style="padding:6px;color:var(--muted);">每节课后</td>
+            <td style="padding:6px;">Orchestrator</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px;">当前课程快照 (目标/已覆盖/剩余) 🆕</td>
+            <td style="padding:6px;color:var(--muted);">每轮对话</td>
+            <td style="padding:6px;">Orchestrator</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px;">最近 K 轮原始对话 (K≈10-15)</td>
+            <td style="padding:6px;color:var(--muted);">实时追加</td>
+            <td style="padding:6px;">Orchestrator</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px;">久远对话压缩摘要</td>
+            <td style="padding:6px;color:var(--muted);">每 5-8 轮</td>
+            <td style="padding:6px;">Memory Compressor (经 Orchestrator 触发)</td>
+          </tr>
+          <tr>
+            <td style="padding:6px;">安全标记 (可信等级/异常标记) 🆕</td>
+            <td style="padding:6px;color:var(--muted);">每轮</td>
+            <td style="padding:6px;">Guard → Orchestrator 写入</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="qa-card" style="flex:1; min-width:260px; max-width:400px;">
+      <div class="q">🗜️ Memory Compressor (工具函数)</div>
+      <div class="a">
+        <p>由 Orchestrator 触发，<strong>不是独立 Agent</strong>：</p>
+        <br>
+        <ul>
+          <li>将 K 轮之前的对话压缩为结构化摘要</li>
+          <li>保留关键信息：知识点覆盖、用户犯错模式、情绪轨迹</li>
+          <li>丢弃无关闲聊和水词</li>
+          <li>压缩比目标：~3:1（3 轮原始对话 → 1 行摘要）</li>
+          <li>压缩结果写回状态池，原始对话从窗口移除</li>
+        </ul>
+        <br>
+        <p style="color:var(--muted);">为什么不是独立 Agent？压缩是纯工具操作，不需要额外的调度逻辑。减少 Agent 数量 = 减少延迟和 token 消耗。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ LOOP DYNAMICS ═══════════════ -->
+<section>
+  <h2><span class="icon">🔄</span> 对话循环动力学</h2>
+  <p class="section-desc">每一轮用户语音输入如何流经全链路，以及 Orchestrator 如何在不同轮次触发不同操作。</p>
+
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">🔁 单轮循环全链路</div>
+      <div class="a">
+        <p><strong>用户录音 → 听到回应，完整路径：</strong></p>
+        <br>
+        <ol style="line-height:2; padding-left:18px;">
+          <li><strong>STT</strong> 语音 → 文本</li>
+          <li><strong>Rule Engine</strong> 过滤攻击模式（非 LLM，~1ms）→ 拦截或放行</li>
+          <li><strong>Guard Agent</strong> 输出：意图标签 + 安全标记</li>
+          <li><strong>Orchestrator</strong> 解读意图 → 更新课程快照 → 决定调度策略</li>
+          <li><strong>Prompt Builder</strong> 组装：人格 Prompt + 状态快照 + K 轮对话 + 安全裁剪</li>
+          <li><strong>Teaching Agent</strong> 生成教学回应文本</li>
+          <li><strong>TTS</strong> 文本 → 语音 → 用户听到</li>
+        </ol>
+        <br>
+        <p style="color:var(--muted);">目标：端到端延迟 ≤ 2 秒（从用户说完到开始播放回应）</p>
+      </div>
+    </div>
+
+    <div class="qa-card">
+      <div class="q">⏱️ Orchestrator 的调度节奏</div>
+      <div class="a">
+        <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;"><strong>轮次</strong></td>
+            <td style="padding:8px;"><strong>Orchestrator 做什么</strong></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">每轮</td>
+            <td style="padding:8px;">读 Guard 意图标签 → 更新课程快照 → 调度 Teaching Agent</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">每 3-5 轮</td>
+            <td style="padding:8px;">检查学生是否偏离课程目标 → 决定是否注入"锚定提醒"到 Prompt</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">每 5-8 轮</td>
+            <td style="padding:8px;">触发 Memory Compressor → 压缩久远对话 → 写回状态池</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">每节课初</td>
+            <td style="padding:8px;">加载用户画像 + 教材编写指南 → 生成本节课课程快照</td>
+          </tr>
+          <tr>
+            <td style="padding:8px;">每节课末</td>
+            <td style="padding:8px;">更新学习进度 → 记录薄弱点 → 为下节课预备推荐内容</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="qa-card" style="grid-column: 1 / -1;">
+      <div class="q">💡 "滑动窗口 + 持久压缩" — 防止上下文稀释的关键</div>
+      <div class="a">
+        <p>不保留完整对话历史。像人类记忆一样——<strong>压缩成结构化摘要（长期记忆）</strong>，仅保留最近几轮<strong>原始对话（工作记忆）</strong>。Memory Compressor 负责这个转换。</p>
+        <p style="margin-top:10px;">同时解决三个问题：</p>
+        <ul>
+          <li>① 上下文不超限（永远只注入 K 轮原始对话 + 摘要）</li>
+          <li>② Agent 不被用户带偏（课程快照固定了方向锚）</li>
+          <li>③ 长期学习可追踪（摘要记录知识覆盖和薄弱点演化）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ ROADMAP ═══════════════ -->
+<section>
+  <h2><span class="icon">🗺️</span> 分阶段实施路线图</h2>
+  <p class="section-desc">从 MVP 到完整产品，分三个阶段推进。每个阶段有明确的交付物和验证标准。</p>
+
+  <div class="phase-list">
+
+    <!-- Phase 1 -->
+    <div class="phase">
+      <div class="phase-bar now"></div>
+      <div class="phase-body">
+        <h3>🔵 Phase 1 — 核心口语 MVP（当前阶段 · 6-10周）</h3>
+        <span class="phase-tag" style="background:rgba(0,210,160,0.12);color:var(--green);">🎯 验证核心假设</span>
+        <ul class="phase-items">
+          <li>✅ 响应式 Web App (Next.js + PWA-ready)</li>
+          <li>✅ 用户画像收集流程（入门问卷 → 水平评估）</li>
+          <li>✅ 基础对话 Agent + CEFR 大纲 + 教材编写指南驱动的口语练习</li>
+          <li>✅ OpenAI TTS + Whisper STT 语音管线</li>
+          <li>✅ Agent Loop 三层架构（Guard → Orchestrator → Teacher）</li>
+          <li>✅ 默认 Iconic 虚拟教师形象 (静态设计稿 + 人格定义文档)</li>
+          <li>✅ 基础进度记录（完成课程数、练习时长、词汇计数）</li>
+          <li>✅ 免费体验 Tier（每日 15K tokens 限额）</li>
+          <li>🔲 对话中词汇/短语摘录功能</li>
+          <li>🔲 WebSocket 流式语音对话</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="phase">
+      <div class="phase-bar next"></div>
+      <div class="phase-body">
+        <h3>🟠 Phase 2 — 个性化学习 + 人格系统（8-12周）</h3>
+        <span class="phase-tag" style="background:rgba(243,156,18,0.12);color:var(--orange);">📈 提升留存与付费转化</span>
+        <ul class="phase-items">
+          <li>个性化学习资料生成（用户画像 + CEFR 大纲 → 定制对话剧本）</li>
+          <li>人格光谱库上线（5-8种教学风格可切换）</li>
+          <li>学习进度可视化仪表盘（创意展示，不只是数字）</li>
+          <li>付费 Plan 上线：个性化资料生成 Tier</li>
+          <li>每日学习提醒 + 连续打卡系统</li>
+          <li>ElevenLabs 精品语音线路（付费用户专属）</li>
+          <li>基础情景对话模板库</li>
+          <li>用户反馈收集与 Agent 质量迭代</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="phase">
+      <div class="phase-bar future"></div>
+      <div class="phase-body">
+        <h3>🟣 Phase 3 — 情景化学习 + 扩展（12-16周）</h3>
+        <span class="phase-tag" style="background:rgba(108,92,231,0.12);color:var(--accent2);">🚀 规模化 + 品类扩展</span>
+        <ul class="phase-items">
+          <li>故事化情景沉浸学习（连续剧情 + 角色扮演型英语学习）</li>
+          <li>图文并茂的学习资料（自建图片生成与排版管线）</li>
+          <li>语法练习模块（非核心，作为口语的辅助）</li>
+          <li>文章批阅功能（上传文章 → AI 批改 + 建议）</li>
+          <li>模型微调（基于积累的用户交互数据微调教学专用小模型）</li>
+          <li>React Native 移动端 App</li>
+          <li>扩展至其他语言（日语、韩语等）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ TECH STACK ═══════════════ -->
+<section>
+  <h2><span class="icon">⚙️</span> 技术栈推荐</h2>
+  <p class="section-desc">每一层的具体技术选型及理由。</p>
+
+  <div class="stack-grid">
+    <div class="stack-card">
+      <h4>🖥️ 前端框架</h4>
+      <p>响应式 Web，支持桌面 + 移动浏览器。PWA 实现类原生体验</p>
+      <span class="choice">Next.js 14+ (App Router)</span>
+    </div>
+    <div class="stack-card">
+      <h4>🎨 UI 组件</h4>
+      <p>现代化组件库，配合 Tailwind 快速迭代</p>
+      <span class="choice">Tailwind CSS + Radix UI / shadcn</span>
+    </div>
+    <div class="stack-card">
+      <h4>🔊 语音识别 (STT)</h4>
+      <p>流式识别 + 多语言支持 + 高准确率</p>
+      <span class="choice">OpenAI Whisper API / Deepgram</span>
+    </div>
+    <div class="stack-card">
+      <h4>🔊 语音合成 (TTS)</h4>
+      <p>自然度优先，支持流式输出</p>
+      <span class="choice">OpenAI TTS (默认) + ElevenLabs (精品)</span>
+    </div>
+    <div class="stack-card">
+      <h4>🧠 LLM 推理</h4>
+      <p>主力对话 + 学习资料生成</p>
+      <span class="choice">Claude API (Opus 4.x 对话) + GPT-4o (辅助生成)</span>
+    </div>
+    <div class="stack-card">
+      <h4>📦 向量数据库</h4>
+      <p>教材大纲嵌入 + 用户记忆检索</p>
+      <span class="choice">Pinecone / pgvector (PostgreSQL)</span>
+    </div>
+    <div class="stack-card">
+      <h4>🗄️ 业务数据库</h4>
+      <p>用户画像 · 学习进度 · 计划 · 支付</p>
+      <span class="choice">PostgreSQL + Prisma ORM</span>
+    </div>
+    <div class="stack-card">
+      <h4>🔗 实时通信</h4>
+      <p>语音流 + 对话流双向传输</p>
+      <span class="choice">WebSocket (ws / Socket.io) + Server-Sent Events</span>
+    </div>
+    <div class="stack-card">
+      <h4>🚀 部署</h4>
+      <p>边缘部署降低语音延迟</p>
+      <span class="choice">Vercel (前端) + Fly.io / Railway (后端 GPU)</span>
+    </div>
+    <div class="stack-card">
+      <h4>🔐 认证 & 支付</h4>
+      <p>用户体系 + 订阅付费</p>
+      <span class="choice">NextAuth.js + Stripe</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PRICING ═══════════════ -->
+<section>
+  <h2><span class="icon">💰</span> 定价模型设计</h2>
+  <p class="section-desc">分层定价，免费版用于获客和体验，付费版提供真正价值。目标：付费版价格 &lt; 市面上一节真人外教课的 1/10。</p>
+
+  <div class="pricing-row">
+    <div class="price-card">
+      <h3>🆓 体验版</h3>
+      <div class="price">免费</div>
+      <ul>
+        <li>每日 15K tokens 对话额度</li>
+        <li>基础口语练习对话</li>
+        <li>入门水平评估</li>
+        <li>默认教师人格</li>
+        <li>标准 TTS 音色</li>
+        <li>基础进度记录</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <h3>⭐ 学习版 (推荐)</h3>
+      <div class="price">~$9.99 <small>/ 月</small></div>
+      <ul>
+        <li>无限对话额度</li>
+        <li>个性化学习资料生成</li>
+        <li>自适应学习计划</li>
+        <li>全部教师人格可选</li>
+        <li>ElevenLabs 精品语音</li>
+        <li>高级进度仪表盘</li>
+        <li>词汇/短语自动摘录</li>
+        <li>每日学习提醒</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <h3>👨‍👩‍👧 家庭版</h3>
+      <div class="price">~$14.99 <small>/ 月</small></div>
+      <ul>
+        <li>包含学习版全部功能</li>
+        <li>最多 4 个独立账号</li>
+        <li>家长进度查看面板</li>
+        <li>情景化学习内容 (Phase 3)</li>
+        <li>优先体验新功能</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ RISK ═══════════════ -->
+<section>
+  <h2><span class="icon">⚠️</span> 风险评估与缓解</h2>
+  <p class="section-desc">识别关键风险并提前准备应对方案。</p>
+
+  <table class="risk-table">
+    <thead>
+      <tr><th>风险</th><th>等级</th><th>影响</th><th>缓解策略</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>语音延迟过高</strong> 导致对话体验不自然</td>
+        <td class="risk-high">🔴 高</td>
+        <td>用户流失</td>
+        <td>流式 TTS + 边缘部署 + WebSocket 全双工；目标端到端延迟 &lt;1.5s</td>
+      </tr>
+      <tr>
+        <td><strong>LLM 推理成本</strong> 难以控制</td>
+        <td class="risk-high">🔴 高</td>
+        <td>单位经济学失效</td>
+        <td>分层模型策略（简单意图用小模型）、Token 限额、长期微调降本</td>
+      </tr>
+      <tr>
+        <td><strong>Agent "被用户带偏"</strong> 教学效果差</td>
+        <td class="risk-med">🟡 中</td>
+        <td>留存率低</td>
+        <td>三层 Agent Loop + 学习状态摘要锚定 → 已在架构中设计</td>
+      </tr>
+      <tr>
+        <td><strong>版权/法律风险</strong> 教材素材或人格模仿</td>
+        <td class="risk-med">🟡 中</td>
+        <td>法律纠纷</td>
+        <td>仅用大纲结构不复制内容、人格光谱标签化、法务早期介入</td>
+      </tr>
+      <tr>
+        <td><strong>TTS 音色单一</strong> 缺乏亲和力</td>
+        <td class="risk-low">🟢 低</td>
+        <td>品牌感弱</td>
+        <td>ElevenLabs 提供丰富音色库 + 自定义声音克隆</td>
+      </tr>
+      <tr>
+        <td><strong>用户英语水平评估不准确</strong></td>
+        <td class="risk-med">🟡 中</td>
+        <td>内容难度不匹配</td>
+        <td>多维评估（自评 + 多轮对话采样 + CEFR 标准测试题）+ 用户手动校准</td>
+      </tr>
+      <tr>
+        <td><strong>自然语言数据库泄露</strong> 用户档案完整暴露</td>
+        <td class="risk-high">🔴 高</td>
+        <td>信任崩塌 + 合规风险</td>
+        <td>存储加密 + 输入过滤 + Prompt 边界隔离 + 审计日志 → 详见数据安全章节</td>
+      </tr>
+      <tr>
+        <td><strong>间接 Prompt Injection</strong> 恶意用户输入污染库</td>
+        <td class="risk-med">🟡 中</td>
+        <td>Agent 行为异常</td>
+        <td>输入层过滤 LLM 控制 token + 用户内容标记来源和可信等级</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════ DATA SECURITY ═══════════════ -->
+<section>
+  <h2><span class="icon">🔒</span> 数据安全与隐私设计</h2>
+  <p class="section-desc">以纯 Prompt Engineering 为引擎的系统，后端存放的基本都是自然语言（用户画像、学习进度、对话摘要、教材编写指南等）。这种架构有其独特的<strong>安全优势</strong>，也有需要正视的<strong>风险</strong>。</p>
+
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">⚠️ 自然语言存储的固有风险</div>
+      <div class="a">
+        <p><strong>自然语言一旦泄露，立即可读、可理解、可利用。</strong>这与结构化数据不同——结构化数据即使泄露也需要"解析和解读"，而自然语言本身就是解读完的结果。</p>
+        <br>
+        <p><strong>具体风险面：</strong></p>
+        <ul>
+          <li><strong>数据库泄露 = 用户档案完整暴露：</strong>用户的学习水平、薄弱点、对话摘要、甚至部分对话原文都在自然语言中，泄露后可直接用于社会工程攻击或竞品分析</li>
+          <li><strong>Prompt Injection 攻击面增大：</strong>库中自然语言会流入 LLM Prompt（作为上下文注入），如果库中数据被恶意用户输入污染且未过滤就写入，可能导致间接 Prompt Injection</li>
+          <li><strong>LLM API 提供商看到数据：</strong>每次调用 Claude/GPT 时，用户画像和对话以明文经过 API。虽有大厂数据保护承诺，在合规严格场景下仍是考虑因素</li>
+          <li><strong>访问控制粒度粗：</strong>自然语言文本不像结构化字段容易做列级权限——一段用户摘要里同时包含姓名、水平、薄弱点，无法"只让 Agent 看水平但不看姓名"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-card">
+      <div class="q">🟢 自然语言存储的固有优势</div>
+      <div class="a">
+        <p><strong>但也正因为是自然语言，它天然具备一些安全优势：</strong></p>
+        <br>
+        <ul>
+          <li><strong>无代码执行风险：</strong>自然语言规则被 Agent 读取后只是作为生成指引，不涉及代码注入或命令执行</li>
+          <li><strong>审计友好：</strong>自然语言日志比二进制/结构化数据更容易被人类审计——安全事件发生后，可直接阅读日志理解发生了什么</li>
+          <li><strong>无需反序列化攻击面：</strong>不像序列化对象（如 Python pickle），纯文本不会在解析时触发代码执行</li>
+          <li><strong>备份和恢复简单：</strong>纯文本/JSON 格式，不依赖特定数据库版本</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-card" style="grid-column: 1 / -1;">
+      <div class="q">🛡️ 分层防护策略</div>
+      <div class="a">
+        <table style="width:100%; font-size:0.88rem; border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="padding:10px;text-align:left;">防护层</th>
+              <th style="padding:10px;text-align:left;">措施</th>
+              <th style="padding:10px;text-align:left;">保护什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;"><strong>🔐 传输层</strong></td>
+              <td style="padding:10px;">TLS 1.3 全覆盖（用户↔服务、服务↔LLM API）</td>
+              <td style="padding:10px;">防中间人窃听</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;"><strong>🔐 存储层</strong></td>
+              <td style="padding:10px;">数据库全盘加密（PostgreSQL TDE / 云服务商 KMS）+ 用户画像字段级可选 AES-256 加密</td>
+              <td style="padding:10px;">防物理泄露 / 云服务商侧泄露</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;"><strong>🔐 访问层</strong></td>
+              <td style="padding:10px;">最小权限原则：Agent → 数据库走专用 Service Account，只授予其职能必需的读/写权限。人类运维不直接访问生产库自然语言字段</td>
+              <td style="padding:10px;">防内部越权</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;"><strong>🔐 输入层</strong></td>
+              <td style="padding:10px;">用户输入在写入数据库前过滤潜在注入标记（如 "&lt;system&gt;"、"&lt;|im_start|&gt;" 等 LLM 控制 token）；所有用户生成内容标记来源和可信等级</td>
+              <td style="padding:10px;">防间接 Prompt Injection 污染库</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;"><strong>🔐 Prompt 层</strong></td>
+              <td style="padding:10px;">从数据库注入到 LLM Prompt 的内容用分隔符包裹 + 明确来源标注，使 LLM 能区分"指令"和"数据"</td>
+              <td style="padding:10px;">防库中数据被 LLM 误认为指令</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;"><strong>🔐 审计层</strong></td>
+              <td style="padding:10px;">所有自然语言数据的读写操作记录到不可篡改的审计日志（append-only）；定期自动扫描库中是否残留敏感个人信息（如真实姓名、邮箱）</td>
+              <td style="padding:10px;">事后溯源 + 合规</td>
+            </tr>
+          </tbody>
+        </table>
+        <br>
+        <p><strong>底线判断：</strong>自然语言存储的"可读性"既是风险也是特性——关键不在于<strong>不让它可读</strong>（加密可以做到），而在于<strong>谁有权读、在哪读、怎么读</strong>。分层防护的目标是把泄露概率降到足够低，同时保留自然语言的可审计优势。</p>
+        <span class="tag recommend">✅ 核心原则: 传输全加密 + 存储加密 + 输入过滤 + Prompt 边界隔离 + 操作全审计</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SUCCESS METRICS ═══════════════ -->
+<section>
+  <h2><span class="icon">📏</span> 成功指标 (KPI)</h2>
+  <p class="section-desc">用数据衡量项目是否走在正确的轨道上。</p>
+
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">🎯 MVP 阶段 (Phase 1)</div>
+      <div class="a">
+        <ul>
+          <li><strong>DAU ≥ 100</strong> (自然增长 + 邀请)</li>
+          <li><strong>次日留存 ≥ 40%</strong></li>
+          <li><strong>平均会话时长 ≥ 8 分钟</strong></li>
+          <li><strong>端到端语音延迟 ≤ 2s</strong></li>
+          <li><strong>用户反馈 NPS ≥ 30</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="qa-card">
+      <div class="q">📈 增长阶段 (Phase 2+)</div>
+      <div class="a">
+        <ul>
+          <li><strong>免费→付费转化率 ≥ 5%</strong></li>
+          <li><strong>月留存 ≥ 60%</strong></li>
+          <li><strong>平均月学习天数 ≥ 12</strong></li>
+          <li><strong>用户推荐率 (K-factor) ≥ 1.2</strong></li>
+          <li><strong>单位用户毛利 &gt; 0</strong>（扣除 LLM + TTS 成本）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FIRST VERIFIABLE FEATURE ═══════════════ -->
+<section>
+  <h2><span class="icon">🚀</span> 现在就能做的 — 最小可验证原型</h2>
+  <p class="section-desc">完整的 Agent 架构是目标，但我们需要<strong>快速验证核心假设</strong>。以下是当前可以立即动手、1-2 周内可跑通的最小闭环。</p>
+
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">🎯 要验证的核心假设</div>
+      <div class="a">
+        <p>如果语音对话体验<strong>不自然、延迟过高、听起来像机器人</strong>——那后面的架构设计再精妙也没用。</p>
+        <br>
+        <p><strong>第 0 号假设（最高优先级）：</strong>"用现有 TTS 技术可以实现端到端 ≤2s 延迟的、听感自然的英语口语对话。"</p>
+        <br>
+        <p>这个假设如果验证失败 → 需要重新评估整个项目的技术可行性。<br>如果验证成功 → 可以放心投入架构搭建。</p>
+      </div>
+    </div>
+
+    <div class="qa-card">
+      <div class="q">🔧 原型范围（刻意最小化）</div>
+      <div class="a">
+        <p><strong>只做这些：</strong></p>
+        <br>
+        <ul style="line-height:2.2;">
+          <li>✅ <strong>Web 录音按钮</strong> — 浏览器 MediaRecorder API，点击录音，再点击停止</li>
+          <li>✅ <strong>STT</strong> — Whisper API，接收音频 blob，返回转录文本</li>
+          <li>✅ <strong>一个硬编码的 Teacher Prompt</strong> — "你是英语口语老师，用户是 B1 水平。请用英语和他练习对话。每次回复不超过 3 句。" 不需要 Guard、不需要 Orchestrator、不需要状态池</li>
+          <li>✅ <strong>TTS</strong> — OpenAI TTS API，把 Teacher 的文本回复转为语音，浏览器自动播放</li>
+          <li>✅ <strong>测量延迟</strong> — 记录每一步的耗时（STT → LLM → TTS），显示在界面上</li>
+        </ul>
+        <br>
+        <p><strong>不做的：</strong></p>
+        <ul style="color:var(--muted);">
+          <li>❌ 没有 Guard Agent</li>
+          <li>❌ 没有 Orchestrator</li>
+          <li>❌ 没有状态池 / 记忆压缩</li>
+          <li>❌ 没有人格切换</li>
+          <li>❌ 没有用户画像 / 水平评估</li>
+          <li>❌ 没有 WebSocket（HTTP 请求即可）</li>
+          <li>❌ 没有数据库</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="qa-card" style="grid-column: 1 / -1;">
+      <div class="q">📏 验证标准 — 什么算"通过"？</div>
+      <div class="a">
+        <table style="width:100%; font-size:0.88rem; border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="padding:10px;text-align:left;">指标</th>
+              <th style="padding:10px;text-align:left;">目标</th>
+              <th style="padding:10px;text-align:left;">可接受</th>
+              <th style="padding:10px;text-align:left;">不合格</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">端到端延迟 (用户说完 → 开始听到回应)</td>
+              <td style="padding:10px;color:var(--green);">≤ 1.5s</td>
+              <td style="padding:10px;color:var(--orange);">≤ 2.5s</td>
+              <td style="padding:10px;color:var(--red);">> 3s</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">语音自然度 (主观评分 1-5)</td>
+              <td style="padding:10px;color:var(--green);">≥ 4</td>
+              <td style="padding:10px;color:var(--orange);">≥ 3</td>
+              <td style="padding:10px;color:var(--red);">≤ 2</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px;">Teacher 回复相关性</td>
+              <td style="padding:10px;color:var(--green);">始终围绕口语练习</td>
+              <td style="padding:10px;color:var(--orange);">偶尔偏题但能拉回</td>
+              <td style="padding:10px;color:var(--red);">频繁被带偏</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;">单次对话成本 (LLM + STT + TTS)</td>
+              <td style="padding:10px;color:var(--green);">≤ $0.02 / 轮</td>
+              <td style="padding:10px;color:var(--orange);">≤ $0.05 / 轮</td>
+              <td style="padding:10px;color:var(--red);">> $0.10 / 轮</td>
+            </tr>
+          </tbody>
+        </table>
+        <br>
+        <p><strong>全部达标或可接受 → 通过，进入 Phase 1 正式开发。</strong><br>任一项不合格 → 先解决问题再往前推进。</p>
+      </div>
+    </div>
+
+    <div class="qa-card">
+      <div class="q">💻 技术原型代码结构</div>
+      <div class="a">
+        <p style="font-family:monospace; font-size:0.82rem; line-height:1.8; background:var(--card2); padding:14px; border-radius:8px;">
+          your-english-teacher/<br>
+          ├── app/<br>
+          │   ├── page.tsx          ← 主页面：录音按钮 + 对话显示 + 延迟面板<br>
+          │   └── api/<br>
+          │       ├── stt/route.ts  ← POST 音频 → 返回转录文本<br>
+          │       ├── chat/route.ts ← POST 文本 → 调用 LLM → 返回回复<br>
+          │       └── tts/route.ts  ← POST 文本 → 返回音频流<br>
+          ├── lib/<br>
+          │   ├── prompts.ts       ← 硬编码的 Teacher System Prompt<br>
+          │   └── latency.ts       ← 延迟测量工具<br>
+          └── .env.local           ← API keys
+        </p>
+        <br>
+        <p><strong>技术栈</strong>：Next.js 14 + TypeScript + Tailwind CSS（前端 100%，截至目前无需后端数据库）</p>
+        <span class="tag recommend">✅ 预计工时: 1-2 周 (单人) | 难度: 低 | 最大风险: TTS 延迟</span>
+      </div>
+    </div>
+
+    <div class="qa-card">
+      <div class="q">📈 原型通过后的下一步</div>
+      <div class="a">
+        <ol style="line-height:2.2; padding-left:18px;">
+          <li><strong>加入 Guard Agent</strong> — 先做最简版（只做意图分类：相关/偏离）</li>
+          <li><strong>加入状态池</strong> — 先只用内存 Map（不做持久化），验证数据流</li>
+          <li><strong>加入用户画像</strong> — 一个 5 题的入门问卷 → 生成简单画像</li>
+          <li><strong>加入 CEFR 大纲</strong> — 一个 JSON 文件定义 B1 级口语主题</li>
+          <li><strong>切换到 WebSocket</strong> — 流式音频，降低感知延迟</li>
+        </ol>
+        <br>
+        <p>每一步都是<strong>在前一步跑通的基础上加一层</strong>，渐进式搭建到完整架构。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ NEXT STEPS ═══════════════ -->
+<section>
+  <h2><span class="icon">🚦</span> 接下来的行动项</h2>
+  <p class="section-desc">从计划到执行，当前可以立即启动的事项。</p>
+
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">📋 立即可做的 (Week 1-2)</div>
+      <div class="a">
+        <ol style="padding-left:18px; line-height:2;">
+          <li><strong>Iconic 角色设计：</strong>确定默认虚拟教师的外观、名字、人格定义文档</li>
+          <li><strong>技术原型验证：</strong>搭建 STT → LLM → TTS 最小闭环，测试端到端延迟</li>
+          <li><strong>CEFR 大纲结构化：</strong>整理 A1-C2 各级口语能力标准和主题列表</li>
+          <li><strong>Web 项目脚手架：</strong>Next.js + Tailwind 初始化 + 基础页面路由</li>
+          <li><strong>人格光谱初稿：</strong>定义 3-5 种教学风格的核心 System Prompt</li>
+        </ol>
+      </div>
+    </div>
+    <div class="qa-card">
+      <div class="q">🤔 需要进一步讨论的</div>
+      <div class="a">
+        <ol style="padding-left:18px; line-height:2;">
+          <li><strong>品牌命名：</strong>"YourEnglishTeacher" 是项目代号还是最终品牌名？</li>
+          <li><strong>角色风格方向：</strong>可爱型 (Chiikawa/Labubu) vs 专业型 vs 幽默型？</li>
+          <li><strong>投资人/团队情况：</strong>是否有预算可以用于 ElevenLabs 等付费服务？</li>
+          <li><strong>目标市场：</strong>优先中文母语者学英语，还是全球化？影响内容语言和定价策略</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /.container -->
+
+<footer>
+  YourEnglishTeacher · Project Plan · Generated 2026-06-18 · Phase: Pre-MVP Planning
+</footer>
+
+</body>
+</html>

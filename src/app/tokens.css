@@ -1,0 +1,16 @@
+:root {
+  --canvas: #f8f8f5;
+  --surface: #ffffff;
+  --sidebar: #f2f3ee;
+  --ink: #252c27;
+  --muted: #626960;
+  --accent: #43603e;
+  --accent-soft: #e8eedf;
+  --border: #e3e5de;
+  --border-strong: #c9cec4;
+  --sans: "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --serif:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+    serif;
+  --mono: "SFMono-Regular", Consolas, monospace;
+}
