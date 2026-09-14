@@ -10,17 +10,17 @@ it("works without credentials and fails closed on unimplemented providers", () =
   );
 });
 it("requires exact origins and secure cookies for HTTPS", () => {
-  expect(() => readConfig({ APP_ORIGIN: "https://teacher.example" })).toThrow(
+  expect(() => readConfig({ APP_ORIGIN: "https://melissa.example" })).toThrow(
     "COOKIE_SECURE",
   );
-  expect(() => readConfig({ APP_ORIGIN: "http://teacher.example" })).toThrow(
+  expect(() => readConfig({ APP_ORIGIN: "http://melissa.example" })).toThrow(
     "HTTPS",
   );
   expect(() =>
     readConfig({ APP_ORIGIN: "http://127.0.0.1:3000/path" }),
   ).toThrow("origin");
   expect(
-    readConfig({ APP_ORIGIN: "https://teacher.example", COOKIE_SECURE: "true" })
+    readConfig({ APP_ORIGIN: "https://melissa.example", COOKIE_SECURE: "true" })
       .COOKIE_SECURE,
   ).toBe("true");
 });

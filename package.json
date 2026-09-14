@@ -1,5 +1,5 @@
 {
-  "name": "your-english-teacher",
+  "name": "melissa",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -16,7 +16,9 @@
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "build:preview": "node scripts/build-preview.mjs",
+    "test:e2e:subpath": "MELISSA_TEST_BASE_PATH=/melissa playwright test"
   },
   "dependencies": {
     "@radix-ui/react-icons": "1.3.2",

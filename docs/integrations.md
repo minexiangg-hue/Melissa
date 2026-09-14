@@ -36,7 +36,7 @@ Export existing aggregates using the application while guest identity is still a
 - **Billing:** add an entitlement service and a signed, replay-safe webhook ledger. Plan labels, pricing, and payment UI remain absent until a payment provider and product policy exist.
 - **Curriculum and materials:** build on the versioned original scenario seeds and `teachingGuidelines`. Store provenance and prompt versions. A formal CEFR assessment must use validated tasks and cannot reuse participation counters as scores.
 - **Memory:** extend the structured summary with validated error/knowledge evidence; keep raw learner text out of trusted instructions. Historical teacher messages are intentionally not fully retained in this version.
-- **Brand/persona:** the project name is provisional and persona guidance lives with teaching rules. Introduce approved artwork and personality definitions without changing orchestration or database code.
+- **Brand/persona:** the product name is Melissa and persona guidance lives with teaching rules. Introduce approved artwork and personality definitions without changing orchestration or database code.
 - **PWA:** add a manifest, approved icons and a narrowly scoped service worker. Do not cache private API snapshots or transcripts as public offline assets.
 
 These are documented integration seams, not claims that the underlying services are implemented.

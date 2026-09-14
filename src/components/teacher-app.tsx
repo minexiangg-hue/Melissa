@@ -120,7 +120,7 @@ export function TeacherApp() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "your-english-teacher-data.json";
+    link.download = "melissa-data.json";
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -148,14 +148,12 @@ export function TeacherApp() {
         Skip to practice
       </a>
       <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="YourEnglishTeacher home">
+        <Link href="/" className="brand" aria-label="Melissa home">
           <span className="brand-mark">
             <ChatBubbleIcon />
           </span>
           <span>
-            Your English
-            <br />
-            <b>Teacher.</b>
+            <b>Melissa</b>
           </span>
         </Link>
         <div className="sidebar-label">A little more confident.</div>

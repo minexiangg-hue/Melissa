@@ -7,7 +7,9 @@ test("learner can set up, practice, resume, finish, export and delete", async ({
   test.setTimeout(60000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("./");
+  await expect(page).toHaveTitle("Melissa · A little more confident");
+  await expect(page.getByRole("link", { name: "Melissa home" })).toBeVisible();
   await page.getByLabel("What should we call you?").fill("Mei");
   expect(
     (
@@ -67,9 +69,7 @@ test("learner can set up, practice, resume, finish, export and delete", async ({
   await page.getByRole("button", { name: "Preferences", exact: true }).click();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export my practice data" }).click();
-  expect((await download).suggestedFilename()).toBe(
-    "your-english-teacher-data.json",
-  );
+  expect((await download).suggestedFilename()).toBe("melissa-data.json");
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", { name: "Delete my profile and practice data" })
@@ -84,7 +84,7 @@ test("learner can set up, practice, resume, finish, export and delete", async ({
 });
 
 test("failed request keeps draft and allows retry", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("./");
   await page.getByLabel("What should we call you?").fill("Lin");
   await page.getByRole("button", { name: "Make room for practice" }).click();
   await page.getByRole("button", { name: "Start a conversation" }).click();

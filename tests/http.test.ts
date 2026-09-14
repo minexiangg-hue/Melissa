@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SqliteLearnerRepository } from "@/server/storage/sqlite";
 import { Orchestrator } from "@/server/orchestrator";
 import { DemoGuard, DemoTeacher } from "@/server/providers/demo";
 import { profile } from "./helpers";
+import { freshState } from "@/domain/models";
+import { LEGACY_GUEST_COOKIE } from "@/server/http/identity";
 const context = vi.hoisted(() => ({ container: null as unknown }));
 vi.mock("@/server/container", () => ({
   getContainer: () => context.container,
@@ -55,13 +57,15 @@ describe("HTTP security and contracts", () => {
     const { response, data } = await bootstrap();
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toMatch(
-      /yet_guest=[a-f0-9]{64}/,
+      /melissa_guest=[a-f0-9]{64}/,
     );
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     expect(response.headers.get("set-cookie")).toContain("SameSite=strict");
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("x-request-id")).toBeTruthy();
-    expect(JSON.stringify(data)).not.toMatch(/ownerHash|owner_hash|yet_guest/);
+    expect(JSON.stringify(data)).not.toMatch(
+      /ownerHash|owner_hash|melissa_guest/,
+    );
   });
   it("rejects cross-origin writes and anonymous reads", async () => {
     expect(
@@ -73,8 +77,11 @@ describe("HTTP security and contracts", () => {
     ).toBe(403);
     expect((await handleRequest(req("state"))).status).toBe(401);
     expect(
-      (await handleRequest(req("state", "GET", undefined, "yet_guest=forged")))
-        .status,
+      (
+        await handleRequest(
+          req("state", "GET", undefined, "melissa_guest=forged"),
+        )
+      ).status,
     ).toBe(401);
   });
   it("rejects malformed JSON, extra fields, wrong types, oversized bodies and media types", async () => {
@@ -172,5 +179,127 @@ describe("HTTP security and contracts", () => {
     );
     const health = await handleRequest(req("health"));
     expect(await health.json()).toEqual({ status: "ok", mode: "demo" });
+  });
+});
+
+describe("Melissa guest migration", () => {
+  function legacyGuest(expiresAt: number, displayName = "Existing learner") {
+    const token = randomBytes(32).toString("hex");
+    const owner = createHash("sha256").update(token).digest("hex");
+    const state = freshState(new Date().toISOString().slice(0, 10));
+    state.profile = { ...profile, displayName };
+    repository.create(owner, state, expiresAt);
+    return { token, owner, cookie: `${LEGACY_GUEST_COOKIE}=${token}` };
+  }
+  it("migrates an existing guest without changing records, ownership or expiry", async () => {
+    const expiry = Date.now() + 2 * 86400000;
+    const guest = legacyGuest(expiry);
+    const service = new Orchestrator(
+      repository,
+      new DemoGuard(),
+      new DemoTeacher(),
+      { dailyUnitLimit: 15000, timeoutMs: 100 },
+    );
+    const started = service.startSession(guest.owner, 0, "everyday-b1");
+    const before = await service.sendMessage(
+      guest.owner,
+      started.state.sessions[0]!.id,
+      {
+        revision: started.state.revision,
+        requestId: randomUUID(),
+        text: "Hello, I am learning English.",
+      },
+    );
+    const response = await handleRequest(
+      req("bootstrap", "POST", {}, guest.cookie),
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).state).toEqual(before.state);
+    const migrated = response.cookies.get("melissa_guest")!;
+    expect(migrated.value).toBe(guest.token);
+    expect(migrated.maxAge).toBeLessThanOrEqual(2 * 86400);
+    expect(migrated.maxAge).toBeGreaterThan(2 * 86400 - 5);
+    expect(response.cookies.get(LEGACY_GUEST_COOKIE)?.maxAge).toBe(0);
+    expect(repository.expiresAt(guest.owner)).toBe(expiry);
+    const state = await handleRequest(
+      req("state", "GET", undefined, `melissa_guest=${guest.token}`),
+    );
+    expect((await state.json()).state).toEqual(before.state);
+  });
+  it("prefers the current Melissa identity when both cookie names exist", async () => {
+    const current = await bootstrap();
+    const legacy = legacyGuest(Date.now() + 86400000, "Other guest");
+    const response = await handleRequest(
+      req("bootstrap", "POST", {}, `${current.cookie}; ${legacy.cookie}`),
+    );
+    expect((await response.json()).state).toEqual(current.data.state);
+    expect(response.cookies.get("melissa_guest")).toBeUndefined();
+    expect(response.cookies.get(LEGACY_GUEST_COOKIE)?.maxAge).toBe(0);
+    expect(repository.read(legacy.owner)?.profile?.displayName).toBe(
+      "Other guest",
+    );
+  });
+  it("never restores expired legacy data and clears invalid legacy cookies", async () => {
+    const expired = legacyGuest(Date.now() - 1);
+    expect(
+      (await handleRequest(req("state", "GET", undefined, expired.cookie)))
+        .status,
+    ).toBe(401);
+    for (const cookie of [expired.cookie, `${LEGACY_GUEST_COOKIE}=forged`]) {
+      const response = await handleRequest(
+        req("bootstrap", "POST", {}, cookie),
+      );
+      expect((await response.json()).state.profile).toBeNull();
+      expect(response.cookies.get("melissa_guest")?.value).not.toBe(
+        expired.token,
+      );
+      expect(response.cookies.get(LEGACY_GUEST_COOKIE)?.maxAge).toBe(0);
+    }
+  });
+  it("deletes the same underlying account and both cookie names during migration", async () => {
+    const guest = legacyGuest(Date.now() + 86400000);
+    const response = await handleRequest(
+      req("data", "DELETE", { revision: 0 }, guest.cookie),
+    );
+    expect(response.status).toBe(200);
+    expect(response.cookies.get("melissa_guest")?.maxAge).toBe(0);
+    expect(response.cookies.get(LEGACY_GUEST_COOKIE)?.maxAge).toBe(0);
+    expect(repository.read(guest.owner)).toBeNull();
+    expect(
+      (
+        await handleRequest(
+          req("state", "GET", undefined, `melissa_guest=${guest.token}`),
+        )
+      ).status,
+    ).toBe(401);
+  });
+  it("uses the configured HTTPS origin behind a proxy and issues Secure cookies", async () => {
+    const container = context.container as {
+      config: { APP_ORIGIN: string; COOKIE_SECURE: string };
+    };
+    const previous = container.config;
+    container.config = {
+      APP_ORIGIN: "https://melissa.example:3201",
+      COOKIE_SECURE: "true",
+    };
+    try {
+      const response = await handleRequest(
+        req("bootstrap", "POST", {}, undefined, "https://melissa.example:3201"),
+      );
+      expect(response.status).toBe(200);
+      expect(response.cookies.get("melissa_guest")?.secure).toBe(true);
+      expect(
+        (
+          await handleRequest(
+            req("bootstrap", "POST", {}, undefined, "https://melissa.example"),
+          )
+        ).status,
+      ).toBe(403);
+      expect((await handleRequest(req("bootstrap", "POST", {}))).status).toBe(
+        403,
+      );
+    } finally {
+      container.config = previous;
+    }
   });
 });

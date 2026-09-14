@@ -175,7 +175,7 @@ export function PracticeRoom({
               </div>
               <div className="message-body">
                 <span className="message-name">
-                  {message.role === "assistant" ? "Your teacher" : "You"}
+                  {message.role === "assistant" ? "Melissa" : "You"}
                 </span>
                 <p>{message.text}</p>
               </div>

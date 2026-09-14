@@ -1,6 +1,6 @@
 # API v1
 
-Base path: `/api/v1`. JSON request bodies use `Content-Type: application/json`. Browser clients send credentials automatically. Every mutation also requires `Origin` equal to `APP_ORIGIN`, including bootstrap. API responses use `Cache-Control: no-store` and an `X-Request-Id` correlation ID.
+Default API prefix: `/api/v1`. With `NEXT_PUBLIC_BASE_PATH=/melissa`, the browser prefix is `/melissa/api/v1`; the endpoint paths below are relative to that prefix. `APP_ORIGIN` remains the origin without a path, such as `https://hermoscare.com`. JSON request bodies use `Content-Type: application/json`. Browser clients send credentials automatically. Every mutation also requires `Origin` equal to `APP_ORIGIN`, including bootstrap. Application API responses use `Cache-Control: no-store` and an `X-Request-Id` correlation ID; the deployment proxy can also return bounded JSON errors before a request reaches the application.
 
 The cookie, not a client-supplied user ID, determines ownership. Session IDs are unguessable UUIDs but are still checked against the current learner's stored sessions.
 

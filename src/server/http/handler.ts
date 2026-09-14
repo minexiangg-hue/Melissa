@@ -1,10 +1,9 @@
 import "server-only";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { AppError } from "@/domain/errors";
 import {
-  freshState,
   mutationSchema,
   sendMessageSchema,
   startSessionSchema,
@@ -12,12 +11,16 @@ import {
 } from "@/domain/models";
 import { getContainer } from "../container";
 
-const COOKIE = "yet_guest";
-const TTL_SECONDS = 60 * 60 * 24 * 30;
+import {
+  GUEST_COOKIE,
+  LEGACY_GUEST_COOKIE,
+  clearGuestCookie,
+  createGuest,
+  resolveGuest,
+  setGuestCookie,
+} from "./identity";
+
 const MAX_BODY_BYTES = 16 * 1024;
-function hash(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
 
 async function readJson<T>(
   request: NextRequest,
@@ -82,30 +85,16 @@ export async function handleRequest(request: NextRequest) {
     const path = request.nextUrl.pathname.replace(/^\/api\/v1\/?/, "");
     if (path === "health" && request.method === "GET")
       return json({ status: "ok", mode: "demo" });
-    const token = request.cookies.get(COOKIE)?.value;
-    let owner = token && /^[a-f0-9]{64}$/.test(token) ? hash(token) : null;
-    if (owner && !repository.read(owner)) owner = null;
+    const identity = resolveGuest(request, repository);
+    const owner = identity?.owner;
+    const secure = config.COOKIE_SECURE === "true";
     if (path === "bootstrap" && request.method === "POST") {
       await readJson(request, mutationSchema.pick({}));
-      let newToken: string | null = null;
-      if (!owner) {
-        newToken = randomBytes(32).toString("hex");
-        owner = hash(newToken);
-        repository.create(
-          owner,
-          freshState(new Date().toISOString().slice(0, 10)),
-          Date.now() + TTL_SECONDS * 1000,
-        );
-      }
-      const response = json(orchestrator.snapshot(owner));
-      if (newToken)
-        response.cookies.set(COOKIE, newToken, {
-          httpOnly: true,
-          secure: config.COOKIE_SECURE === "true",
-          sameSite: "strict",
-          path: "/",
-          maxAge: TTL_SECONDS,
-        });
+      const guest = identity ?? createGuest(repository);
+      const response = json(orchestrator.snapshot(guest.owner));
+      if (!identity || identity.legacy) setGuestCookie(response, guest, secure);
+      if (request.cookies.has(LEGACY_GUEST_COOKIE))
+        clearGuestCookie(response, LEGACY_GUEST_COOKIE, secure);
       return response;
     }
     if (!owner)
@@ -146,13 +135,8 @@ export async function handleRequest(request: NextRequest) {
       const input = await readJson(request, mutationSchema);
       orchestrator.deleteData(owner, input.revision);
       const response = json({ deleted: true });
-      response.cookies.set(COOKIE, "", {
-        httpOnly: true,
-        secure: config.COOKIE_SECURE === "true",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 0,
-      });
+      clearGuestCookie(response, GUEST_COOKIE, secure);
+      clearGuestCookie(response, LEGACY_GUEST_COOKIE, secure);
       return response;
     }
     throw new AppError("NOT_FOUND", "Endpoint not found.", 404);

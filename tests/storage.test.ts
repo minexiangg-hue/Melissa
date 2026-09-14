@@ -19,9 +19,9 @@ afterEach(() => {
 });
 describe("SQLite repository contract", () => {
   it("survives reopening and applies migrations idempotently", () => {
-    const dir = mkdtempSync(join(tmpdir(), "yet-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "melissa-test-"));
     dirs.push(dir);
-    const path = join(dir, "teacher.db");
+    const path = join(dir, "melissa.db");
     const a = connect(path);
     a.create("owner", freshState("2026-09-11"), Date.now() + 60000);
     const b = connect(path);
@@ -47,6 +47,8 @@ describe("SQLite repository contract", () => {
     const db = connect(":memory:");
     db.create("expired", freshState("2026-09-11"), Date.now() - 1);
     expect(db.read("expired")).toBeNull();
+    expect(db.expiresAt("expired")).toBeNull();
+    expect(db.expiresAt("unknown")).toBeNull();
     expect(() =>
       db.save("expired", 0, { ...freshState("2026-09-11"), revision: 1 }),
     ).toThrow("expired");

@@ -15,15 +15,20 @@ export async function api<T = Snapshot>(
 ): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api/v1/${path}`, {
-      method,
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: AbortSignal.timeout(20000),
-      headers:
-        body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/v1/${path}`,
+      {
+        method,
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: AbortSignal.timeout(20000),
+        headers:
+          body === undefined
+            ? undefined
+            : { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+    );
   } catch {
     throw new ApiError(
       "We couldn't reach the server. Your draft is still here. Please try again.",

@@ -27,6 +27,6 @@ The three named agent layers exist as boundaries. Guard and Teacher are determin
 
 ## Deliberate choices versus the plan
 
-SQLite replaces PostgreSQL/Prisma **for the local foundation only**. Native CSS tokens replace an extra styling framework for a small, coherent UI. There is one responsive app route with internal practice/progress/preferences views; the versioned HTTP API is independent of that presentation. Authentication, payment, vectors, elaborate multi-agent frameworks and streaming transports are deferred to avoid introducing infrastructure with no validated use yet.
+SQLite replaces PostgreSQL/Prisma **for the local foundation only**. Native CSS tokens replace an extra styling framework for a small, coherent UI. There is one responsive app route with internal practice/progress/preferences views; it can be mounted at `/` or under a configured base path such as `/melissa`. The versioned HTTP API is independent of that presentation. Authentication, payment, vectors, elaborate multi-agent frameworks and streaming transports are deferred to avoid introducing infrastructure with no validated use yet.
 
-A permanent brand character, a complete CEFR syllabus, a humanlike audio experience, and public deployment are not included in this handoff.
+The Melissa name and a server preview at `https://hermoscare.com/melissa` are included. A permanent brand character, a complete CEFR syllabus, a humanlike audio experience, and the operational work needed for general public release remain open.

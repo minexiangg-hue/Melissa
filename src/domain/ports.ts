@@ -12,6 +12,7 @@ import type {
 export interface LearnerRepository {
   create(ownerHash: string, state: LearnerState, expiresAt: number): void;
   read(ownerHash: string): LearnerState | null;
+  expiresAt(ownerHash: string): number | null;
   save(ownerHash: string, expectedRevision: number, next: LearnerState): void;
   delete(ownerHash: string, expectedRevision: number): void;
 }

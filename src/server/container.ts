@@ -19,8 +19,8 @@ function createContainer() {
 }
 // Survives development hot reloads; initialization stays out of the build phase.
 const globalContainer = globalThis as typeof globalThis & {
-  teacherContainer?: ReturnType<typeof createContainer>;
+  melissaContainer?: ReturnType<typeof createContainer>;
 };
 export function getContainer() {
-  return (globalContainer.teacherContainer ??= createContainer());
+  return (globalContainer.melissaContainer ??= createContainer());
 }

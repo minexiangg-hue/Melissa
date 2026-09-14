@@ -1,6 +1,8 @@
-# YourEnglishTeacher
+# Melissa
 
 A working, local-first foundation for the speaking-first English teacher described in [the development plan](plan.html). This implementation focuses on durable application boundaries and a small, usable learning loop.
+
+The product is named **Melissa**. The existing local project directory remains `YourEnglishTeacher`; see [branding and upgrade compatibility](docs/branding.md).
 
 **Current stage: a text-practice foundation with a clearly labeled, deterministic demo teacher.** No paid API, API key, database server, or external account is required. This is not the completed Phase 1 MVP or a validated voice prototype.
 
@@ -23,7 +25,15 @@ npm run build
 npm start
 ```
 
-The production build runs locally with the same configuration. Public deployment requires the work described in [operations](docs/operations.md).
+The production build runs locally with the same configuration.
+
+## Server preview
+
+The server preview is running at **https://hermoscare.com/melissa**. Public-network access and an HTTPS browser practice flow have been verified. Nginx serves Melissa under `/melissa` through the server's existing HTTPS port 443 and forwards that path to the production app on `127.0.0.1:3200`. The app runs as the `melissa` systemd service, using a separate, ignored `.env.preview` file. The local directory and learner database remain in place.
+
+For this deployment, `.env.preview` sets `APP_ORIGIN=https://hermoscare.com`, `NEXT_PUBLIC_BASE_PATH=/melissa`, and `COOKIE_SECURE=true`. Build with `npm run build:preview` so the client assets and server use the same base path. The default development configuration serves the app at `/` with an empty base path.
+
+See [server preview operations](docs/operations.md#server-preview) for configuration, service commands, and connectivity checks. No additional cloud firewall port needs to be opened for this URL. Port 3201 is an optional redirect to the address above if it becomes reachable; use the standard HTTPS URL to browse. This preview still uses the scripted demo teacher; the [public release work](docs/operations.md#before-public-or-paid-use) remains open.
 
 ## What works
 
@@ -45,7 +55,7 @@ The production build runs locally with the same configuration. Public deployment
 | Accounts / recovery                  | Guest session only, 30-day expiry               | Replace identity resolution and associate guest data with an authenticated account |
 | Billing / real token usage           | No billing; estimated demo units only           | Reserve and reconcile usage around provider calls                                  |
 | CEFR assessment / adaptive materials | Self-reported level and authored scenario seeds | Versioned curriculum, assessment service, evaluation corpus                        |
-| Branding / character artwork         | Project name and neutral teacher identity       | Design tokens, persona guidelines, replaceable UI identity                         |
+| Character artwork / visual identity  | Melissa name and neutral teacher identity       | Design tokens, persona guidelines, replaceable artwork                             |
 | PWA / streaming voice                | Responsive web only                             | Manifest/service worker and a separately measured audio transport                  |
 
 Unknown providers fail configuration validation instead of silently falling back. No empty API endpoints pretend to implement a service. See [integration instructions](docs/integrations.md).
@@ -56,11 +66,12 @@ Unknown providers fail configuration validation instead of silently falling back
 npm run check           # ESLint, strict TypeScript, backend tests
 npm run build           # Production build
 npx playwright install chromium
-npm run test:e2e        # Desktop and mobile browser tests
+npm run test:e2e        # Desktop and mobile tests at /
+npm run test:e2e:subpath # The same browser flows at /melissa
 npm run format:check
 ```
 
-The browser suite uses its own database at `.data/e2e.db` and port 3100. It starts and stops its own development server. Unit and HTTP tests use isolated in-memory databases; the persistence test also reopens a temporary disk database.
+Run the two browser suites sequentially: both use port 3100 and start/stop their own development server. The root-path suite uses `.data/e2e.db`; the subpath suite uses `.data/e2e-subpath.db`. Unit and HTTP tests use isolated in-memory databases; the persistence test also reopens a temporary disk database.
 
 ## Project map
 
@@ -80,4 +91,4 @@ tests/                 Domain, storage, HTTP, configuration and browser checks
 docs/                  Architecture, API, operations, integration work and roadmap
 ```
 
-Read [architecture](docs/architecture.md) before adding stateful features, [API contracts](docs/api.md) before adding another client, and [the next development steps](docs/roadmap.md) before expanding scope. The original `instructions.txt` and `plan.html` remain unchanged.
+Read [architecture](docs/architecture.md) before adding stateful features, [API contracts](docs/api.md) before adding another client, and [the next development steps](docs/roadmap.md) before expanding scope. The concept brief (`instructions.txt`) and development plan (`plan.html`) retain the original scope and now use the Melissa name; the implementation status is documented here and in the roadmap.

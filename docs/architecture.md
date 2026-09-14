@@ -31,6 +31,12 @@ flowchart TD
 - `server/storage/` implements a replaceable repository. `container.ts` is the only place that wires concrete adapters into the application.
 - Browser components receive serializable snapshots and submit intent; they never supply trusted progress or model instructions.
 
+## Deployment path
+
+The app supports either the default root path or a configured `NEXT_PUBLIC_BASE_PATH`, currently `/melissa` on the HTTPS server preview. Set the same base path when building and running: Next.js uses it for pages and assets, and the browser API client prefixes its versioned endpoints with it. A reverse proxy preserves the full path when forwarding requests.
+
+`APP_ORIGIN` remains the browser origin without a path, such as `https://hermoscare.com`. Mounting the app under `/melissa` does not change the domain contracts, endpoint suffixes, or stored learner records. Run both root-path and subpath browser flows after changing routing. See [operations](operations.md#server-preview) for the build and proxy setup.
+
 ## Turn transaction
 
 1. Validate text and request ID; reject unsupported control delimiters.

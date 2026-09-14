@@ -61,6 +61,14 @@ export class SqliteLearnerRepository implements LearnerRepository {
       throw new Error("Unsupported learner data schema.");
     return state;
   }
+  expiresAt(ownerHash: string): number | null {
+    const row = this.db
+      .prepare(
+        "SELECT expires_at FROM learners WHERE owner_hash = ? AND expires_at > ?",
+      )
+      .get(ownerHash, this.now()) as { expires_at: number } | undefined;
+    return row?.expires_at ?? null;
+  }
   save(ownerHash: string, expectedRevision: number, next: LearnerState) {
     assertRevision(next.revision, expectedRevision + 1);
     const result = this.db

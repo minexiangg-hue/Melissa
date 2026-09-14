@@ -1,0 +1,50 @@
+# This preview unit is specific to the current Ubuntu server.
+# Build first, create .data and .next/cache as ubuntu, then install this unit.
+# Keep .env.preview private; it must set the public HTTPS origin, secure cookies,
+# and DATABASE_PATH inside the writable .data directory.
+[Unit]
+Description=Melissa English practice preview
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+EnvironmentFile=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.env.preview
+ExecStartPre=/usr/bin/test -f /home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.next/BUILD_ID
+ExecStart=/home/ubuntu/.nvm/versions/node/v24.18.0/bin/node /home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3200
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=30
+KillSignal=SIGTERM
+KillMode=mixed
+UMask=0077
+
+# Keep source, dependencies, and build output read-only. SQLite needs its entire
+# directory writable for WAL/SHM sidecars; Next's runtime cache is also writable.
+# Add a reviewed path here if a future integration needs other persistent files.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.data
+ReadWritePaths=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.next/cache
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
