@@ -1,0 +1,215 @@
+.lesson-maker {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 42px;
+  background: var(--lavender);
+  border-radius: 9px;
+  padding: 30px;
+}
+.maker-icon {
+  display: inline-flex;
+  margin-bottom: 13px;
+}
+.maker-copy h2 {
+  font-size: 34px;
+  line-height: 1.05;
+}
+.maker-copy p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 12px;
+  max-width: 220px;
+}
+.maker-form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+.maker-form > label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.maker-form textarea {
+  width: 100%;
+  min-height: 90px;
+  font-size: 12px;
+}
+.maker-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 12px;
+}
+.maker-actions select {
+  min-width: 0;
+  font-size: 12px;
+}
+.maker-actions .button {
+  gap: 12px;
+  padding-inline: 15px;
+  font-size: 12px;
+}
+.library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 32px 0 10px;
+}
+.library-filters button {
+  border-radius: 30px;
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 10px 16px;
+  font-size: 12px;
+  min-height: 40px;
+}
+.library-filters button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--canvas);
+  border-color: var(--ink);
+}
+.lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.lesson-card {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+}
+.lesson-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.lesson-card-top > span:first-child {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1;
+}
+.lesson-typography {
+  font-family: var(--serif);
+  font-size: 61px;
+  line-height: 1.5;
+  margin: 24px -4px;
+  text-align: center;
+  letter-spacing: -3px;
+  font-style: italic;
+}
+.lesson-card.everyday .lesson-typography {
+  background: var(--accent-soft);
+}
+.lesson-card.travel .lesson-typography {
+  background: var(--mint);
+}
+.lesson-card.work .lesson-typography {
+  background: var(--lavender);
+}
+.lesson-card h3 {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+.lesson-card p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 13px;
+}
+.lesson-card .text-button {
+  margin-top: auto;
+  padding-top: 23px;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.material-list {
+  border-top: 1px solid var(--border);
+}
+.material-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  text-align: left;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  padding: 22px 0;
+}
+.material-item:hover {
+  background: var(--surface);
+}
+.material-item-icon {
+  background: var(--lavender);
+  width: 52px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px 9px 9px 3px;
+}
+.material-item > span:nth-child(2) {
+  flex: 1;
+}
+.material-item small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.material-item strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 29px;
+  font-weight: 400;
+}
+.material-item > span:nth-child(2) > span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.source-shelf {
+  display: flex;
+  gap: 22px;
+  padding: 34px 0 10px;
+  margin-top: 36px;
+  border-top: 1px solid var(--border);
+}
+.source-shelf > svg {
+  margin-top: 6px;
+}
+.source-shelf h2 {
+  font-size: 28px;
+}
+.source-shelf p {
+  max-width: 550px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 9px;
+}
+summary {
+  cursor: pointer;
+  font-size: 12px;
+  padding: 14px 0;
+}
+.source-shelf ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.source-shelf li a {
+  font-size: 12px;
+}
+.source-shelf li span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 5px;
+}

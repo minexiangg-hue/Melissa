@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { LearningMaterial, KnowledgeOverview } from "./learning/models";
 
 export const levelSchema = z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]);
 export type Level = z.infer<typeof levelSchema>;
@@ -27,6 +28,10 @@ export interface Lesson {
   goal: Goal;
   level: Level;
   objectives: Objective[];
+  material?: Pick<
+    LearningMaterial,
+    "reading" | "dialogue" | "vocabulary" | "exercises" | "sourceIds"
+  >;
 }
 export interface Message {
   id: string;
@@ -65,10 +70,12 @@ export interface LearnerState {
   revision: number;
   profile: Profile | null;
   sessions: Session[];
+  materials: LearningMaterial[];
   usage: { day: string; units: number };
 }
 export interface Capabilities {
-  teacher: "demo";
+  teacher: "demo" | "openai-compatible" | "codex";
+  materialGeneration: boolean;
   speechToText: false;
   textToSpeech: false;
   accounts: false;
@@ -79,6 +86,14 @@ export interface Snapshot {
   lessons: Lesson[];
   capabilities: Capabilities;
   dailyUnitLimit: number;
+  knowledge: KnowledgeOverview;
+  aiUsage: {
+    requests: number;
+    limit: number;
+    inputTokens: number;
+    outputTokens: number;
+    unknownUsageRequests: number;
+  } | null;
 }
 export const mutationSchema = z
   .object({ revision: z.number().int().nonnegative() })
@@ -106,6 +121,7 @@ export function freshState(day: string): LearnerState {
     revision: 0,
     profile: null,
     sessions: [],
+    materials: [],
     usage: { day, units: 0 },
   };
 }

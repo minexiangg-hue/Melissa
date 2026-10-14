@@ -1,0 +1,211 @@
+.material-reader {
+  padding-top: 25px;
+}
+.material-reader > .text-button {
+  font-size: 12px;
+}
+.material-heading {
+  padding: 38px 0;
+  border-bottom: 1px solid var(--border);
+}
+.material-heading h1 {
+  max-width: 780px;
+  font-size: 66px;
+  line-height: 1.05;
+}
+.material-heading > p:not(.eyebrow) {
+  max-width: 570px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 20px;
+}
+.material-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 25px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.material-columns {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 58px;
+  padding: 37px 0;
+}
+.material-columns h2,
+.exercise-section > h2 {
+  font-size: 35px;
+  line-height: 1.1;
+  margin-top: 15px;
+}
+.reading-prose {
+  margin-top: 20px;
+}
+.reading-prose p {
+  font-size: 14px;
+  line-height: 1.9;
+  margin-bottom: 15px;
+}
+.dialogue-section {
+  border-top: 1px solid var(--border);
+  margin-top: 33px;
+  padding-top: 29px;
+}
+.material-dialogue {
+  margin-top: 20px;
+}
+.material-dialogue p {
+  display: grid;
+  grid-template-columns: 65px 1fr;
+  gap: 13px;
+  padding: 13px 0;
+  font-size: 12px;
+}
+.material-dialogue strong {
+  font-size: 12px;
+}
+.vocabulary-section {
+  background: var(--lavender);
+  padding: 25px;
+  border-radius: 8px;
+  align-self: start;
+}
+.vocabulary-section h2 {
+  font-size: 31px;
+}
+.vocabulary-section dl {
+  margin: 20px 0 0;
+}
+.vocabulary-section dl > div {
+  padding: 17px 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.vocabulary-section dt {
+  font-family: var(--serif);
+  font-size: 27px;
+}
+.vocabulary-section dd {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.vocabulary-section q {
+  display: block;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.exercise-section {
+  border-top: 1px solid var(--border);
+  padding: 32px 0;
+}
+.exercise-section > p {
+  color: var(--muted);
+  margin-top: 12px;
+  font-size: 12px;
+}
+.exercise-grid {
+  display: grid;
+  gap: 24px;
+  margin-top: 28px;
+}
+.exercise {
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.exercise legend {
+  font-size: 13px;
+  padding: 0 8px;
+  max-width: 100%;
+}
+.exercise legend > span {
+  color: var(--muted);
+  margin-right: 13px;
+  font-family: var(--serif);
+  font-size: 24px;
+}
+.answer-options {
+  display: grid;
+  gap: 8px;
+}
+.answer-options label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.answer-options input {
+  width: 15px;
+  height: 15px;
+  min-height: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--ink);
+}
+.answer-options label.chosen {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.answer-feedback {
+  margin-top: 15px;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 14px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+}
+.answer-feedback.correct {
+  background: var(--mint);
+}
+.reader-finish {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  padding: 30px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.reader-finish-symbol {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 45px;
+}
+.reader-finish h2 {
+  font-size: 31px;
+}
+.reader-finish p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.reader-finish .button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.source-details {
+  padding: 15px 0;
+  color: var(--muted);
+}
+.source-details > p,
+.source-details > div > p {
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.source-details > div > a {
+  font-size: 12px;
+}
+.source-details svg {
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+}

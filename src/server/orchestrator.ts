@@ -1,5 +1,5 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { AppError, assertRevision } from "@/domain/errors";
 import { lessonsFor, nextObjective } from "@/domain/curriculum";
 import { buildTeachingContext, compressMemory } from "@/domain/prompt";
@@ -9,6 +9,14 @@ import {
   sendMessageSchema,
   teacherResultSchema,
 } from "@/domain/models";
+import {
+  generateMaterialSchema,
+  materialToLesson,
+} from "@/domain/learning/models";
+import type { GenerateMaterialInput } from "@/domain/learning/models";
+import { MaterialService } from "./learning/service";
+import { knowledgeOverview } from "./learning/knowledge";
+import type { InferenceCoordinator } from "./inference/coordinator";
 import type { LearnerState, Profile, Snapshot } from "@/domain/models";
 import type {
   GuardProvider,
@@ -18,8 +26,9 @@ import type {
 
 export const MAX_SESSION_TURNS = 40;
 export const MAX_SESSIONS = 100;
-const capabilities = {
+const defaultCapabilities = {
   teacher: "demo",
+  materialGeneration: true,
   speechToText: false,
   textToSpeech: false,
   accounts: false,
@@ -47,6 +56,9 @@ export class Orchestrator {
       dailyUnitLimit: number;
       timeoutMs: number;
       now?: () => Date;
+      teacherKind?: Snapshot["capabilities"]["teacher"];
+      materials?: MaterialService;
+      inference?: InferenceCoordinator;
     },
   ) {}
   private now() {
@@ -86,78 +98,95 @@ export class Orchestrator {
     return {
       state,
       lessons,
-      capabilities,
+      capabilities: {
+        ...defaultCapabilities,
+        teacher: this.options.teacherKind ?? "demo",
+      },
+      knowledge: knowledgeOverview(
+        state.profile?.level ?? "B1",
+        state.profile?.goal ?? "everyday",
+      ),
+      aiUsage: this.options.inference?.usage(owner) ?? null,
       dailyUnitLimit: this.options.dailyUnitLimit,
     };
   }
   updateProfile(owner: string, revision: number, input: Profile) {
-    const profile = profileSchema.parse(input);
-    validateInput(profile.displayName);
-    const state = this.read(owner);
-    assertRevision(state.revision, revision);
-    state.profile = profile;
-    this.save(owner, state);
-    return this.snapshot(owner);
+    return this.change(owner, () => {
+      const profile = profileSchema.parse(input);
+      validateInput(profile.displayName);
+      const state = this.read(owner);
+      assertRevision(state.revision, revision);
+      state.profile = profile;
+      this.save(owner, state);
+      return this.snapshot(owner);
+    });
   }
   startSession(owner: string, revision: number, lessonId: string) {
-    const state = this.read(owner);
-    assertRevision(state.revision, revision);
-    if (!state.profile)
-      throw new AppError(
-        "VALIDATION",
-        "Set up your learner profile first.",
-        422,
-      );
-    const active = state.sessions.find((s) => s.status === "active");
-    if (active) {
-      if (active.lesson.id === lessonId) return this.snapshot(owner);
-      throw new AppError(
-        "CONFLICT",
-        "Finish your current practice before starting another.",
-        409,
-      );
-    }
-    if (state.sessions.length >= MAX_SESSIONS)
-      throw new AppError(
-        "LIMIT_REACHED",
-        "This local preview stores up to 100 sessions. Export and clear your data to start again.",
-        429,
-      );
-    const lesson = lessonsFor(state.profile.level).find(
-      (l) => l.id === lessonId,
-    );
-    if (!lesson)
-      throw new AppError(
-        "NOT_FOUND",
-        "This lesson is not available for your selected level.",
-        404,
-      );
-    const at = this.now().toISOString();
-    state.sessions.unshift({
-      id: randomUUID(),
-      lesson,
-      level: state.profile.level,
-      status: "active",
-      startedAt: at,
-      endedAt: null,
-      turnCount: 0,
-      practicedObjectiveIds: [],
-      activeSeconds: 0,
-      lastActivityAt: at,
-      lastTurnMs: null,
-      messages: [
-        {
-          id: randomUUID(),
-          role: "assistant",
-          text: `Let's try “${lesson.title}”. ${lesson.objectives[0]!.prompt}`,
-          at,
+    return this.change(owner, () => {
+      const state = this.read(owner);
+      assertRevision(state.revision, revision);
+      if (!state.profile)
+        throw new AppError(
+          "VALIDATION",
+          "Set up your learner profile first.",
+          422,
+        );
+      const active = state.sessions.find((s) => s.status === "active");
+      if (active) {
+        if (active.lesson.id === lessonId) return this.snapshot(owner);
+        throw new AppError(
+          "CONFLICT",
+          "Finish your current practice before starting another.",
+          409,
+        );
+      }
+      if (state.sessions.length >= MAX_SESSIONS)
+        throw new AppError(
+          "LIMIT_REACHED",
+          "This local preview stores up to 100 sessions. Export and clear your data to start again.",
+          429,
+        );
+      const material = state.materials.find((item) => item.id === lessonId);
+      const lesson = material
+        ? materialToLesson(material)
+        : lessonsFor(state.profile.level).find((l) => l.id === lessonId);
+      if (!lesson)
+        throw new AppError(
+          "NOT_FOUND",
+          "This lesson is not available for your selected level.",
+          404,
+        );
+      const at = this.now().toISOString();
+      state.sessions.unshift({
+        id: randomUUID(),
+        lesson,
+        level: lesson.level,
+        status: "active",
+        startedAt: at,
+        endedAt: null,
+        turnCount: 0,
+        practicedObjectiveIds: [],
+        activeSeconds: 0,
+        lastActivityAt: at,
+        lastTurnMs: null,
+        messages: [
+          {
+            id: randomUUID(),
+            role: "assistant",
+            text: `Let's try “${lesson.title}”. ${lesson.objectives[0]!.prompt}`,
+            at,
+          },
+        ],
+        memory: {
+          archivedMessages: 0,
+          practicedObjectiveIds: [],
+          redirects: 0,
         },
-      ],
-      memory: { archivedMessages: 0, practicedObjectiveIds: [], redirects: 0 },
-      receipts: [],
+        receipts: [],
+      });
+      this.save(owner, state);
+      return this.snapshot(owner);
     });
-    this.save(owner, state);
-    return this.snapshot(owner);
   }
   private async withTimeout<T>(
     operation: (signal: AbortSignal) => Promise<T>,
@@ -232,77 +261,189 @@ export class Orchestrator {
     if (state.usage.day !== day) state.usage = { day, units: 0 };
     // A bounded demo meter. Real adapters must replace this with reserved/reconciled provider usage.
     const units = Math.ceil(input.text.length / 4) + 100;
-    if (state.usage.units + units > this.options.dailyUnitLimit)
+    if (
+      !this.options.inference &&
+      state.usage.units + units > this.options.dailyUnitLimit
+    )
       throw new AppError(
         "LIMIT_REACHED",
         "Today's demo allowance is used up. It resets at midnight UTC.",
         429,
       );
     const started = performance.now();
-    const result = await this.withTimeout(async (signal) => {
-      const intent = guardResultSchema.parse(
-        await this.guard.classify(input.text, signal),
-      );
+    const operation = () =>
+      this.withTimeout(async (signal) => {
+        const intent = guardResultSchema.parse(
+          await this.guard.classify(input.text, signal),
+        );
+        const answer = teacherResultSchema.parse(
+          await this.teacher.respond(
+            buildTeachingContext(
+              state.profile!,
+              session,
+              input.text,
+              intent.intent,
+            ),
+            signal,
+          ),
+        );
+        return { ...answer, intent: intent.intent };
+      });
+    const commit = (result: {
+      text: string;
+      intent: "practice" | "help" | "redirect";
+    }) => {
       const objective = nextObjective(session);
-      // Participation only; never mark proficiency or CEFR mastery from a demo response.
+      // Participation is recorded after inference sees the objective actually attempted.
       if (
-        intent.intent === "practice" &&
+        result.intent === "practice" &&
         input.text.split(/\s+/u).length >= 3 &&
         !session.practicedObjectiveIds.includes(objective.id)
       )
         session.practicedObjectiveIds.push(objective.id);
-      if (intent.intent === "redirect") session.memory.redirects += 1;
-      return teacherResultSchema.parse(
-        await this.teacher.respond(
-          buildTeachingContext(
-            state.profile!,
-            session,
-            input.text,
-            intent.intent,
+      if (result.intent === "redirect") session.memory.redirects += 1;
+      const now = this.now();
+      const at = now.toISOString();
+      const messageId = randomUUID();
+      session.messages.push(
+        { id: randomUUID(), role: "user", text: input.text, at },
+        { id: messageId, role: "assistant", text: result.text, at },
+      );
+      session.receipts.push({
+        requestId: input.requestId,
+        text: input.text,
+        messageId,
+      });
+      session.turnCount += 1;
+      session.activeSeconds += Math.max(
+        0,
+        Math.min(
+          120,
+          Math.round(
+            (now.getTime() - Date.parse(session.lastActivityAt)) / 1000,
           ),
+        ),
+      );
+      session.lastActivityAt = at;
+      session.lastTurnMs = Math.round(performance.now() - started);
+      compressMemory(session);
+      if (!this.options.inference) state.usage.units += units;
+      this.save(owner, state);
+      return this.snapshot(owner);
+    };
+    return this.options.inference
+      ? this.options.inference.run(
+          {
+            owner,
+            requestId: input.requestId,
+            revision: input.revision,
+            fingerprint: this.fingerprint({
+              action: "turn",
+              sessionId,
+              text: input.text,
+              revision: input.revision,
+            }),
+          },
+          operation,
+          commit,
+        )
+      : commit(await operation());
+  }
+  private fingerprint(value: unknown) {
+    return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  }
+  async generateMaterial(owner: string, raw: GenerateMaterialInput) {
+    const input = generateMaterialSchema.parse(raw);
+    validateInput(input.topic);
+    const state = this.read(owner);
+    const replay = state.materials.find(
+      (item) => item.requestId === input.requestId,
+    );
+    if (replay) {
+      if (replay.requestedTopic !== input.topic || replay.goal !== input.goal)
+        throw new AppError(
+          "CONFLICT",
+          "This request identifier was already used for another lesson.",
+          409,
+        );
+      return this.snapshot(owner);
+    }
+    assertRevision(state.revision, input.revision);
+    if (!state.profile)
+      throw new AppError(
+        "VALIDATION",
+        "Set up your learner profile first.",
+        422,
+      );
+    if (state.materials.length >= 30)
+      throw new AppError(
+        "LIMIT_REACHED",
+        "Your library holds up to 30 custom lessons. Export and clear your data to start a new collection.",
+        429,
+      );
+    const service = this.options.materials;
+    if (!service)
+      throw new AppError(
+        "PROVIDER_UNAVAILABLE",
+        "Lesson creation is not configured yet.",
+        503,
+      );
+    const operation = () =>
+      this.withTimeout((signal) =>
+        service.create(
+          {
+            level: state.profile!.level,
+            goal: input.goal,
+            topic: input.topic,
+            requestId: input.requestId,
+          },
           signal,
         ),
       );
-    });
-    const now = this.now();
-    const at = now.toISOString();
-    const messageId = randomUUID();
-    session.messages.push(
-      { id: randomUUID(), role: "user", text: input.text, at },
-      { id: messageId, role: "assistant", text: result.text, at },
-    );
-    session.receipts.push({
-      requestId: input.requestId,
-      text: input.text,
-      messageId,
-    });
-    session.turnCount += 1;
-    // Idle gaps are capped. This is an activity estimate, not measured speaking time.
-    session.activeSeconds += Math.max(
-      0,
-      Math.min(
-        120,
-        Math.round((now.getTime() - Date.parse(session.lastActivityAt)) / 1000),
-      ),
-    );
-    session.lastActivityAt = at;
-    session.lastTurnMs = Math.round(performance.now() - started);
-    compressMemory(session);
-    state.usage.units += units;
-    this.save(owner, state);
-    return this.snapshot(owner);
+    const commit = (
+      material: Awaited<ReturnType<MaterialService["create"]>>,
+    ) => {
+      state.materials.unshift(material);
+      this.save(owner, state);
+      return this.snapshot(owner);
+    };
+    return this.options.inference
+      ? this.options.inference.run(
+          {
+            owner,
+            requestId: input.requestId,
+            revision: input.revision,
+            fingerprint: this.fingerprint({
+              action: "material",
+              goal: input.goal,
+              topic: input.topic,
+              level: state.profile.level,
+              revision: input.revision,
+            }),
+          },
+          operation,
+          commit,
+        )
+      : commit(await operation());
   }
   finishSession(owner: string, id: string, revision: number) {
-    const state = this.read(owner);
-    const session = this.session(state, id);
-    if (session.status === "completed") return this.snapshot(owner);
-    assertRevision(state.revision, revision);
-    session.status = "completed";
-    session.endedAt = this.now().toISOString();
-    this.save(owner, state);
-    return this.snapshot(owner);
+    return this.change(owner, () => {
+      const state = this.read(owner);
+      const session = this.session(state, id);
+      if (session.status === "completed") return this.snapshot(owner);
+      assertRevision(state.revision, revision);
+      session.status = "completed";
+      session.endedAt = this.now().toISOString();
+      this.save(owner, state);
+      return this.snapshot(owner);
+    });
   }
   deleteData(owner: string, revision: number) {
-    this.repository.delete(owner, revision);
+    this.change(owner, () => this.repository.delete(owner, revision));
+  }
+  private change<T>(owner: string, operation: () => T): T {
+    return this.options.inference
+      ? this.options.inference.idle(owner, operation)
+      : operation();
   }
 }

@@ -21,7 +21,7 @@ export async function api<T = Snapshot>(
         method,
         credentials: "same-origin",
         cache: "no-store",
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(125000),
         headers:
           body === undefined
             ? undefined
@@ -35,12 +35,20 @@ export async function api<T = Snapshot>(
       "NETWORK",
     );
   }
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new ApiError(
+      "The server returned an incomplete response. Your draft is still here; please try again.",
+      "NETWORK",
+    );
+  }
   if (!response.ok)
     throw new ApiError(
-      data.error?.message ?? "The request failed. Please try again.",
-      data.error?.code ?? "UNKNOWN",
-      data.error?.requestId,
+      data?.error?.message ?? "The request failed. Please try again.",
+      data?.error?.code ?? "UNKNOWN",
+      data?.error?.requestId,
     );
   return data as T;
 }

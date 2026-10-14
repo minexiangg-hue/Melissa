@@ -30,6 +30,8 @@ export default defineConfig({
       DATABASE_PATH: basePath ? ".data/e2e-subpath.db" : ".data/e2e.db",
       NEXT_PUBLIC_BASE_PATH: basePath,
       COOKIE_SECURE: "false",
+      TEACHER_PROVIDER: "demo",
+      MELISSA_BUILD_DIR: ".next",
     },
     timeout: 120000,
   },

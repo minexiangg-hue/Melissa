@@ -7,6 +7,7 @@ export type ErrorCode =
   | "LIMIT_REACHED"
   | "INPUT_BLOCKED"
   | "PROVIDER_UNAVAILABLE"
+  | "RETRY_REQUIRED"
   | "INTERNAL";
 export class AppError extends Error {
   constructor(

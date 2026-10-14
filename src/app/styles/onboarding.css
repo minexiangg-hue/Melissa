@@ -1,0 +1,110 @@
+.onboarding {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 70px;
+  padding: 45px 0 10px;
+}
+.welcome-story {
+  padding-top: 17px;
+}
+.welcome-story h1 {
+  font-size: clamp(53px, 5vw, 76px);
+  line-height: 1.04;
+  white-space: nowrap;
+}
+.welcome-story .hero-description {
+  max-width: 300px;
+  margin-top: 20px;
+}
+.welcome-character {
+  height: 295px;
+  margin-top: 20px;
+  position: relative;
+}
+.welcome-character > .melissa-character {
+  width: 236px;
+  height: 295px;
+  margin-left: 28px;
+  transform: rotate(-5deg);
+}
+.welcome-circle {
+  width: 235px;
+  height: 235px;
+  background: var(--accent-soft);
+  position: absolute;
+  border-radius: 50%;
+  top: 38px;
+  left: 26px;
+}
+.welcome-annotation {
+  position: absolute;
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.2;
+  font-style: italic;
+  right: -8px;
+  top: 84px;
+  transform: rotate(7deg);
+}
+.welcome-footnote {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 14px;
+}
+.onboarding-form {
+  padding: 28px 30px;
+  background: var(--surface);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.onboarding-form h2 {
+  font-size: 32px;
+  line-height: 1.1;
+  margin-top: 12px;
+}
+.onboarding-form > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+  margin-bottom: 26px;
+}
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.field input,
+.field select {
+  font-size: 12px;
+}
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.field-help {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.profile-form > .field-help {
+  font-size: 12px;
+  text-align: center;
+}
+.profile-form > .button {
+  margin-top: 2px;
+}
+.error-text {
+  color: var(--error);
+  font-size: 12px;
+}

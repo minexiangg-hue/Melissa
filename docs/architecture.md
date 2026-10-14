@@ -1,90 +1,92 @@
 # Architecture and decisions
 
-## Scope
+## Current scope
 
-The plan calls for speaking-first practice and a three-layer agent loop. The present request prioritizes a strong framework over feature breadth. The application therefore implements the stateful loop now, using deterministic provider adapters so its correctness can be reviewed without external access. It does not claim to validate the plan's audio latency or learning-effectiveness assumptions.
+Melissa now supports real text tutoring and custom lesson generation through either an external OpenAI-compatible API or a local authenticated Codex CLI. An explicit offline `demo` mode remains for development and credential-free tests. The application includes a persistent lesson library, reading and exercises, guided conversation, progress, an illustrated Melissa character, and optional device read-aloud.
+
+The original plan's speaking-first experience is still a direction, not a completed voice product. Microphone input, transcription, a dedicated Melissa voice, formal proficiency assessment, accounts, and payments are not implemented.
 
 ## Boundaries
 
 ```mermaid
 flowchart TD
-  UI[Responsive Next.js client] --> HTTP[Versioned HTTP boundary]
-  HTTP --> ID[Resolve opaque guest credential]
-  ID --> ORCH[Orchestrator]
-  ORCH --> RULE[Input rules]
-  RULE --> GUARD[Guard provider]
-  GUARD --> PROMPT[Deterministic prompt builder]
-  PROMPT --> TEACHER[Teacher provider]
-  TEACHER --> VALIDATE[Validate provider output]
-  VALIDATE --> CAS[Atomic revision-checked commit]
-  CAS --> DB[(Learner repository)]
-  DB --> ORCH
-  STT[Future speech-to-text adapter] -.-> HTTP
-  HTTP -.-> TTS[Future text-to-speech adapter]
+  UI[Responsive Melissa studio] --> HTTP[Versioned HTTP and guest identity]
+  HTTP --> ORCH[Orchestrator]
+  ORCH --> LEASE[Durable request reservation and owner lease]
+  LEASE --> CONTEXT[Bounded teaching or material context]
+  KNOWLEDGE[Reviewed seeds and source notes] --> CONTEXT
+  CONTEXT --> GENERATE[Shared structured generator]
+  GENERATE --> CODEX[Isolated Codex process]
+  GENERATE --> API[External Chat Completions API]
+  CODEX --> VALIDATE[Runtime schema and relationship checks]
+  API --> VALIDATE
+  VALIDATE --> COMMIT[Atomic learner update and request completion]
+  COMMIT --> DB[(SQLite learner aggregate and request ledger)]
+  UI --> VOICE[Optional browser speech synthesis]
 ```
 
-- `domain/` has no Next.js, filesystem, database, credentials, or vendor SDK dependencies. Zod defines input and output contracts.
-- `server/http/` owns transport, bounded JSON parsing, guest credential resolution, same-origin checks, and safe errors.
-- `server/orchestrator.ts` owns lesson transitions, progression policy, memory compression, usage, and persistence. No provider has write authority.
-- `domain/prompt.ts` constructs a fresh, detached context. It excludes display names, cookies, owner keys, receipts, and unrelated lessons.
-- `server/providers/` implements inference. The demo guard is a heuristic classifier, not a semantic safety model. The demo teacher returns authored prompts, not generated feedback.
-- `server/storage/` implements a replaceable repository. `container.ts` is the only place that wires concrete adapters into the application.
-- Browser components receive serializable snapshots and submit intent; they never supply trusted progress or model instructions.
+- `domain/` defines provider-independent models, validation, participation rules, and prompt construction. It has no Next.js, filesystem, credentials, or database dependency.
+- `server/http/` handles bounded JSON, opaque guest credentials, exact-origin checks, routing, and safe errors.
+- `server/orchestrator.ts` owns state transitions, replay handling, lesson/library limits, memory compression, and persistence. Providers cannot write learner state.
+- `server/inference/` reserves live requests before inference, serializes owner mutations, records reported usage, and coordinates atomic completion. Billing identifiers stay outside prompts through an async execution context.
+- `server/providers/` contains the shared `StructuredGenerator`, two real transports, `AiTeacher`, and explicit demo adapters. The current guard remains a deterministic intent heuristic; it is not a semantic moderation or assessment model.
+- `server/learning/` retrieves teaching context and builds complete learning materials. `content/learning/` contains the reviewed authoring collection.
+- `server/storage/` owns SQLite and ordered migrations. `container.ts` wires adapters and applies metering to the one shared generator used by tutoring and material generation.
+- Browser components render serializable snapshots and submit intent. Character assets and typography live in `public/`; branding does not participate in orchestration.
 
-## Deployment path
+## Live inference transaction
 
-The app supports either the default root path or a configured `NEXT_PUBLIC_BASE_PATH`, currently `/melissa` on the HTTPS server preview. Set the same base path when building and running: Next.js uses it for pages and assets, and the browser API client prefixes its versioned endpoints with it. A reverse proxy preserves the full path when forwarding requests.
+1. Validate the input and request ID; resolve the owner from the guest credential and load that owner's state.
+2. Check saved turn receipts or material request IDs before revision checks. A matching successful replay returns saved work without another model call; reusing an ID for different content is a conflict.
+3. Validate expected revision, profile, session/library limits, and operation prerequisites.
+4. Under `BEGIN IMMEDIATE`, recheck owner/revision, detect previous attempts, enforce guest and global UTC request allowances, and reserve an owner lease. Commit this short transaction before making any network call.
+5. Classify intent where needed and construct bounded context. The teacher sees the objective the learner is actually attempting, before participation advances. Generate and validate output with abort/deadline handling.
+6. Record reported token counts and an optional upstream request identifier. Missing or uncertain usage remains explicitly marked unknown; it is not treated as evidence of zero charges.
+7. In one final SQLite transaction, verify the live lease, apply the learner revision-checked update, save replay evidence, and mark the request completed. Participation, messages, materials, and request completion commit together.
 
-`APP_ORIGIN` remains the browser origin without a path, such as `https://hermoscare.com`. Mounting the app under `/melissa` does not change the domain contracts, endpoint suffixes, or stored learner records. Run both root-path and subpath browser flows after changing routing. See [operations](operations.md#server-preview) for the build and proxy setup.
+Non-inference mutations—preferences, starting/finishing practice, and deletion—use `withIdle`, which checks the same owner lease and performs the synchronous mutation within one transaction. This closes the race between checking a lease and writing through another process. These callbacks must remain synchronous; no transaction is held across inference.
 
-## Turn transaction
+Failed and interrupted attempts retain their allowance entry because the application cannot prove an upstream service did not charge. The application does not automatically retry an uncertain model call. A successful request whose HTTP response was lost is recovered through saved state. A failed or unrecoverable attempt requires an explicit new send with a new request ID. The ledger stores request metadata and fingerprints, not a second copy of prompts or generated text.
 
-1. Validate text and request ID; reject unsupported control delimiters.
-2. Load state using the server-derived owner key. Find the session only within that owner's data.
-3. Check replay receipts before checking revision. Reusing an ID with different text is a conflict.
-4. Check expected revision, session status, turn limit, profile, and daily allowance.
-5. Classify intent, calculate proposed participation changes, and build a bounded context on a detached state copy.
-6. Call the teacher with a timeout and abort signal. Validate its output. Any failure discards the proposed state.
-7. Append the message pair and receipt, compress memory, record latency/activity, and update usage.
-8. Atomically update the complete learner aggregate only if its persisted revision still matches. A conflicting writer gets HTTP 409; no partial turn or partial charge is stored.
+Demo mode uses a separate deterministic practice-unit meter and does not reserve external inference. Its CAS still prevents partial state commits, but its behavior is not evidence about paid model usage.
 
-Concurrent requests can both perform inference before one loses the commit race. This is acceptable for zero-cost demo providers. A paid provider needs durable request reservations and per-learner leases before inference; the current CAS protects data integrity, not external spending.
+## Materials and knowledge
 
-## State and progress
+The authoring collection contains twelve original scenarios across everyday, travel, and work, original writing guidance for A1–C2, and a source catalog. The catalog includes Melissa's original material, short reviewed factual notes from three external sources, and a CEFR reference link excluded from generation. Full third-party pages, textbooks, and media are not bundled or fetched at request time.
 
-A learner aggregate contains profile, session snapshots, usage, a data schema version, and a monotonic revision. There is at most one active session. A lesson's level and objectives are copied at creation so editing preferences does not rewrite history.
+Retrieval filters by goal, then ranks seeds by topic terms and distance from the requested level. It supplies one seed, relevant source notes, and level guidance to generation. This is a small deterministic retrieval layer, not a vector database or an exhaustive syllabus.
 
-An eligible demo turn (at least three whitespace-separated words, classified as practice) marks the current objective **tried**. This is explicitly participation, not semantic correctness, mastery, pronunciation quality, or CEFR assessment. Help and redirects do not advance it. A zero-turn session can be closed but is excluded from the finished-practice count.
+A generated material contains a reading, dialogue, vocabulary, exercises with explanations, and exactly three conversation objectives. Shape validation is followed by checks for distinct IDs/terms/options and valid answer indexes. These checks catch structural mistakes; they cannot establish that every generated answer or explanation is correct. The writer is prompted to solve its exercises, and human content review remains necessary.
 
-Active time is the sum of the intervals before submitted turns, each capped at 120 seconds. It is not microphone time and does not count time after the last message. The daily minute preference is a user target, not a timer or enforced lesson duration.
+Materials retain their provider, level, topic, request ID, creation time, and source IDs. Their content is copied into a practice session so later preference changes do not rewrite that session. Source IDs identify material supplied to generation; they are not automatic verification of every generated claim. See [the authoring collection](../content/learning/README.md).
 
-## Memory and boundedness
+## State, progress, and bounds
 
-- Only the latest 12 raw messages enter the teacher's working context.
-- Compressed memory contains practiced objective IDs, redirect counts, and the number of archived messages. No raw user-authored instructions enter this summary.
-- The complete recent message window is stored; older message pairs are removed. The UI explains this.
-- Retry receipts retain learner text for every submitted turn in the session, up to 40 turns. They are never sent to the teacher. Export includes them; it is not a complete archived transcript of teacher replies.
-- Each guest can store up to 100 sessions. The preview returns a clear limit error instead of silently deleting history.
-- Daily usage is an explicit demo meter (`ceil(input characters / 4) + 100` per committed turn), resetting by UTC date. It does not represent actual tokenization or provider charges.
+A learner aggregate holds profile, sessions, generated materials, demo usage, a data schema version, and a monotonic revision. Released aggregates without `materials` are read with an empty collection, preserving existing identity and history. Only one practice session can be active.
 
-## Storage decision
+A practice-classified turn with at least three whitespace-separated words marks an objective **tried** after a valid response. This applies to both live and demo modes and remains a participation measure, not correctness, mastery, pronunciation quality, or CEFR assessment. Help and redirects do not advance it. Closing a zero-turn session does not count as finished practice.
 
-SQLite lets the foundation work without PostgreSQL credentials, containers, or a database service. WAL mode, prepared statements, a busy timeout, ordered transactional migrations, expiry checks, and atomic compare-and-swap updates provide useful real persistence behavior.
+- The teacher receives at most twelve recent raw messages. Derived memory contains objective IDs, redirect counts, and archived-message counts, never learner-authored instructions.
+- Recent message storage is also bounded to twelve messages. Receipts retain the learner's submitted text for up to forty turns per session, so export is not a complete historical transcript of assistant replies.
+- Each guest can retain up to one hundred sessions and thirty custom materials. Limits produce explicit errors rather than silent deletion.
+- Active time sums intervals before submitted turns, each capped at 120 seconds. It is not microphone time; daily minutes are a preference rather than a timed lesson guarantee.
+- Live request allowances default to sixty per guest and three hundred globally per UTC day. Process-local inference concurrency defaults to two. Counts, reported tokens, and unknown usage are separate from billing or currency.
+- Transports cap inputs and output bytes; API completion tokens, Codex subprocess output, and wall-clock execution have additional bounds. See [provider details](ai-providers.md).
 
-Node's synchronous SQLite API is appropriate for this bounded local preview. Its experimental Node 24 status and event-loop blocking are confined to one adapter. Use PostgreSQL with an asynchronous repository for hosted scale; do not put SQLite on ephemeral serverless disks, share the WAL file over a network filesystem, or run it at the edge.
+## Storage and identity
 
-The repository is intentionally an aggregate interface. A PostgreSQL adapter may initially store the same versioned JSON aggregate, then normalize sessions and usage in a migration without changing the teaching provider contract. Keep optimistic concurrency and ownership constraints in SQL, not only application code.
+SQLite provides local durable storage without another service. WAL mode, prepared statements, a busy timeout, ordered transactional migrations, foreign keys, expiry checks, and revision-checked writes are confined to the server adapter. Inference reservations and aggregate updates share the same connection and transaction boundary. No database transaction remains open while waiting for a model.
 
-## Identity and security limits
+A 256-bit guest token lives in an HttpOnly, SameSite=Strict cookie, with Secure enabled for HTTPS. Only its SHA-256 hash is stored. Tokens expire thirty days after creation. Repository access prunes expired learners at most once per minute; deletion or expiry removes personal request metadata while retaining anonymous same-day allowance entries to prevent resetting the global allowance by deleting data. Older anonymous entries are removed during pruning.
 
-A cryptographically random 256-bit token is kept in an HttpOnly, SameSite=Strict cookie. Only its SHA-256 hash is stored in SQLite. Tokens and rows expire 30 days after creation. The demo has no real account, refresh-token rotation, recovery, or cross-device sync.
+There are no accounts, recovery, refresh-token rotation, or cross-device identity. All unsafe HTTP methods require the exact configured origin, and clients cannot select an owner ID. JSON bodies are limited to 16 KiB; message/profile/topic lengths and unknown fields are validated. React renders learner and generated text without executing it. Logs and public errors omit raw prompts, credentials, and upstream diagnostics.
 
-All unsafe methods require the configured exact origin; clients cannot send an owner ID to select someone else's data. Request bodies are limited to 16 KiB even without Content-Length. Profile and message lengths are bounded; unknown JSON fields are rejected. React renders user messages as plain text. Error logs omit prompts, messages, tokens, profile fields and raw exception messages.
+The external API receives only its explicit request context and has no attached tools. Codex runs with an isolated temporary home/workspace, disabled execution and tool features, and read-only permissions. A live adversarial audit checks runtime diagnostics and a harmless filesystem sentinel independently of the model's reply. Prompt rules and a heuristic guard still do not guarantee perfect teaching relevance or resistance to all content-level manipulation.
 
-Input regexes and prompt separation are defense in depth, not proof against prompt injection. Semantic guard evaluation and adversarial tests must accompany any real model. There are no model tools, raw database tools, or executable learner content in this implementation.
+For hosted scale, migrate both the aggregate repository and durable inference unit of work to an asynchronous database adapter. Replacing only `LearnerRepository` is insufficient because lease and aggregate commits must stay atomic. Do not deploy this SQLite arrangement on ephemeral serverless disks or network-mounted WAL files.
 
-## Verified implementation references
+## Deployment path and speech
 
-- [Next.js route handlers](https://nextjs.org/docs/app/getting-started/route-handlers) for the App Router transport boundary.
-- [Next.js cookies](https://nextjs.org/docs/app/api-reference/functions/cookies) for cookie behavior in the App Router.
-- [Node.js SQLite documentation](https://nodejs.org/docs/latest-v24.x/api/sqlite.html) for the isolated Node 24 persistence adapter.
+The app supports `/` and a configured build-time/runtime `NEXT_PUBLIC_BASE_PATH`, currently `/melissa` on the HTTPS preview. Pages, assets, and versioned API calls use the same prefix; the proxy preserves it. `APP_ORIGIN` remains the origin without a path. See [operations](operations.md).
+
+Read-aloud uses browser `speechSynthesis` after a user gesture, offers cancellation, and handles unavailable voices. Voice availability and quality vary by device; there is no server TTS adapter or dedicated Melissa voice. The application does not request microphone access. Current turn timing measures text generation, not the original plan's speech-to-speech latency target.

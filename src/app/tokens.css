@@ -1,16 +1,39 @@
 :root {
-  --canvas: #f8f8f5;
-  --surface: #ffffff;
-  --sidebar: #f2f3ee;
-  --ink: #252c27;
-  --muted: #626960;
-  --accent: #43603e;
-  --accent-soft: #e8eedf;
-  --border: #e3e5de;
-  --border-strong: #c9cec4;
-  --sans: "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
-  --serif:
-    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
-    serif;
-  --mono: "SFMono-Regular", Consolas, monospace;
+  color-scheme: light dark;
+  --canvas: #f6f3e9;
+  --surface: #fffdf7;
+  --sidebar: #eeece3;
+  --ink: #192b3a;
+  --muted: #5b625b;
+  --accent: #efb74b;
+  --accent-ink: #192b3a;
+  --accent-soft: #f5dfab;
+  --lavender: #e0dfea;
+  --mint: #e0e5d9;
+  --border: #dcdccf;
+  --border-strong: #a9afa4;
+  --error: #923f33;
+  --error-surface: #f9e6dd;
+  --sans: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+  --serif: var(--font-display), Georgia, serif;
+  --radius: 10px;
+  /* Layers: content 0; sidebar 10; skip link 20. */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #17242b;
+    --surface: #1f3037;
+    --sidebar: #131f26;
+    --ink: #f1eee2;
+    --muted: #b3b9b1;
+    --accent: #efb74b;
+    --accent-ink: #192b3a;
+    --accent-soft: #3f3a29;
+    --lavender: #343645;
+    --mint: #2b3e36;
+    --border: #39464a;
+    --border-strong: #727e7e;
+    --error: #ffc3ac;
+    --error-surface: #492d28;
+  }
 }

@@ -1,5 +1,13 @@
-import { ArrowRightIcon, CheckIcon } from "@radix-ui/react-icons";
+"use client";
+import { useState } from "react";
+import {
+  ArrowRightIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  BookmarkIcon,
+} from "@radix-ui/react-icons";
 import type { LearnerState } from "@/domain/models";
+
 export function ProgressView({
   state,
   onPractice,
@@ -7,6 +15,7 @@ export function ProgressView({
   state: LearnerState;
   onPractice: () => void;
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const completed = state.sessions.filter(
     (s) => s.status === "completed" && s.turnCount > 0,
   );
@@ -18,86 +27,125 @@ export function ProgressView({
   );
   return (
     <section className="progress-view enter">
-      <span className="section-kicker">Your practice, taking shape</span>
-      <h1>Every attempt counts.</h1>
-      <p className="lead">
-        Build a habit at your own pace. Here’s what you’ve put into it so far.
-      </p>
-      <div className="stats-grid">
-        <div>
-          <strong>{completed.length.toString().padStart(2, "0")}</strong>
-          <span>Practices finished</span>
-        </div>
-        <div>
-          <strong>{turns.toString().padStart(2, "0")}</strong>
-          <span>Conversation turns</span>
-        </div>
-        <div>
-          <strong>
-            {Math.floor(seconds / 60)
-              .toString()
-              .padStart(2, "0")}
-          </strong>
-          <span>Active minutes, estimated</span>
-        </div>
-        <div>
-          <strong>{objectives.toString().padStart(2, "0")}</strong>
-          <span>Objectives tried</span>
-        </div>
+      <div className="page-heading">
+        <p className="eyebrow">YOUR PERSONAL NOTEBOOK</p>
+        <h1>
+          Look how far
+          <br />
+          <em>your words go.</em>
+        </h1>
+        <p>Every attempt leaves a little something behind. Here’s yours.</p>
       </div>
-      <div className="history-header">
-        <h2>Your practice notebook</h2>
-        <button className="button secondary compact" onClick={onPractice}>
-          Back to practice
-          <ArrowRightIcon />
+      <div className="stats-grid">
+        {[
+          [completed.length, "Practices finished"],
+          [turns, "Conversation turns"],
+          [Math.floor(seconds / 60), "Active minutes, estimated"],
+          [objectives, "Objectives tried"],
+        ].map(([number, label]) => (
+          <div key={label}>
+            <strong>{String(number).padStart(2, "0")}</strong>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="section-heading">
+        <h2>Your conversations</h2>
+        <button className="text-button" onClick={onPractice}>
+          Back to practice <ArrowRightIcon />
         </button>
       </div>
       {state.sessions.length === 0 ? (
-        <div className="empty-state">
-          <h3>A fresh page.</h3>
+        <div className="empty-notebook">
+          <BookmarkIcon />
+          <h3>A fresh page. A good beginning.</h3>
           <p>
             Your first conversation will appear here. Start with one simple
             sentence.
           </p>
+          <button className="button primary" onClick={onPractice}>
+            Find a conversation <ArrowRightIcon />
+          </button>
         </div>
       ) : (
         <ul className="history-list">
           {state.sessions.map((session) => (
             <li key={session.id}>
-              <span className="history-icon">
-                <CheckIcon />
-              </span>
-              <div>
-                <h3>{session.lesson.title}</h3>
-                <p>
-                  {session.level} · {session.turnCount} turns ·{" "}
-                  {session.practicedObjectiveIds.length}/
-                  {session.lesson.objectives.length} objectives tried
-                </p>
-              </div>
-              <div className="history-status">
-                <span>
-                  {session.status === "active"
-                    ? "In progress"
-                    : session.turnCount === 0
-                      ? "Closed without practice"
-                      : "Finished"}
+              <button
+                className="history-row"
+                aria-expanded={expanded === session.id}
+                aria-controls={`record-${session.id}`}
+                onClick={() =>
+                  setExpanded(expanded === session.id ? null : session.id)
+                }
+              >
+                <span className="history-icon">
+                  {session.status === "completed" ? (
+                    <CheckIcon />
+                  ) : (
+                    <BookmarkIcon />
+                  )}
                 </span>
-                <time dateTime={session.startedAt}>
-                  {new Date(session.startedAt).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </time>
+                <span className="history-title">
+                  <strong>{session.lesson.title}</strong>
+                  <span>
+                    {session.level} · {session.turnCount} turns ·{" "}
+                    {session.practicedObjectiveIds.length}/
+                    {session.lesson.objectives.length} objectives tried
+                  </span>
+                </span>
+                <span className="history-status">
+                  <span>
+                    {session.status === "active"
+                      ? "In progress"
+                      : session.turnCount === 0
+                        ? "Closed without practice"
+                        : "Finished"}
+                  </span>
+                  <time dateTime={session.startedAt}>
+                    {new Date(session.startedAt).toLocaleDateString("en", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </time>
+                </span>
+                <ChevronDownIcon
+                  className={expanded === session.id ? "rotated" : ""}
+                />
+              </button>
+              <div
+                id={`record-${session.id}`}
+                hidden={expanded !== session.id}
+                className="history-transcript"
+              >
+                {session.memory.archivedMessages > 0 && (
+                  <p className="field-help">
+                    Earlier messages have been condensed. These are your most
+                    recent turns.
+                  </p>
+                )}
+                {session.messages.map((message) => (
+                  <p key={message.id}>
+                    <strong>
+                      {message.role === "assistant" ? "Melissa" : "You"}
+                    </strong>
+                    <span>{message.text}</span>
+                  </p>
+                ))}
+                {session.status === "active" && (
+                  <button className="text-button" onClick={onPractice}>
+                    Continue this conversation <ArrowRightIcon />
+                  </button>
+                )}
               </div>
             </li>
           ))}
         </ul>
       )}
       <p className="measurement-note">
-        These are practice records, not a CEFR assessment. Active time is
-        estimated from the time between messages, with idle gaps capped at two
-        minutes. Voice, vocabulary mastery, and pronunciation are not measured.
+        A record of practice, not a CEFR assessment. Active minutes estimate
+        time between messages, with idle gaps capped at two minutes. Vocabulary
+        mastery and pronunciation are not measured.
       </p>
     </section>
   );

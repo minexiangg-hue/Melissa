@@ -1,14 +1,14 @@
 # Melissa
 
-A working, local-first foundation for the speaking-first English teacher described in [the development plan](plan.html). This implementation focuses on durable application boundaries and a small, usable learning loop.
+An English-learning studio with a real AI companion, a personal lesson library, and a small, memorable honey-colored guide.
 
-The product is named **Melissa**. The existing local project directory remains `YourEnglishTeacher`; see [branding and upgrade compatibility](docs/branding.md).
+**Live preview: [hermoscare.com/melissa](https://hermoscare.com/melissa).** The deployed edition uses Codex for original replies and lesson generation. The repository also implements an external OpenAI-compatible API adapter and an explicit offline demo mode.
 
-**Current stage: a text-practice foundation with a clearly labeled, deterministic demo teacher.** No paid API, API key, database server, or external account is required. This is not the completed Phase 1 MVP or a validated voice prototype.
+The project directory remains `YourEnglishTeacher`. Existing guest identity, learner records and practice history survive the upgrade.
 
-## Run it
+## Run locally
 
-Use **Node.js 24 LTS** (`nvm use` if you have nvm), then:
+Use Node.js 24 LTS:
 
 ```bash
 npm ci
@@ -16,79 +16,80 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open **http://127.0.0.1:3000**. Use that exact hostname: mutation requests must match `APP_ORIGIN`. To use `localhost` or another port, update `APP_ORIGIN` and the development command together.
+Open **http://127.0.0.1:3000**. The default is `TEACHER_PROVIDER=demo`, so a clean checkout runs without credentials. This mode is labeled in the interface and uses authored content.
 
-SQLite is created automatically at `.data/teacher.db`. Profiles and practice survive restarts. The application binds to loopback by default. The database adapter uses Node's built-in `node:sqlite`, which is experimental in Node 24; its use is isolated behind the repository interface.
+For real Codex generation, authenticate the local Codex CLI, then set these in your private `.env.local`:
 
-```bash
-npm run build
-npm start
+```dotenv
+TEACHER_PROVIDER=codex
+CODEX_MODEL=gpt-5.6-luna
+PROVIDER_TIMEOUT_MS=90000
 ```
 
-The production build runs locally with the same configuration.
+For an external API, set `TEACHER_PROVIDER=openai-compatible`, `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY`. Keys remain server-side. Strict JSON Schema and JSON-object modes are supported; see [AI provider configuration and verification](docs/ai-providers.md). The current server has authenticated Codex access; a live external-API check requires its own credential.
 
-## Server preview
+## The learning loop
 
-The server preview is running at **https://hermoscare.com/melissa**. Public-network access and an HTTPS browser practice flow have been verified. Nginx serves Melissa under `/melissa` through the server's existing HTTPS port 443 and forwards that path to the production app on `127.0.0.1:3200`. The app runs as the `melissa` systemd service, using a separate, ignored `.env.preview` file. The local directory and learner database remain in place.
+1. Choose a name, self-reported level, goal and daily pace.
+2. Start a guided conversation, or create a lesson around something you want to say.
+3. Read the lesson, explore vocabulary, and answer questions with explanations.
+4. Practice the lesson with Melissa, who can refer to its reading, dialogue and exercises.
+5. Reopen saved lessons and conversations in your library and notebook.
 
-For this deployment, `.env.preview` sets `APP_ORIGIN=https://hermoscare.com`, `NEXT_PUBLIC_BASE_PATH=/melissa`, and `COOKIE_SECURE=true`. Build with `npm run build:preview` so the client assets and server use the same base path. The default development configuration serves the app at `/` with an empty base path.
+The app includes 12 original lesson seeds, level-specific writing guidance, and reviewed source notes with provenance. Real AI writes new materials tailored to the requested topic and level; the demo selects authored samples. Source material and maintenance instructions live in [content/learning](content/learning/README.md).
 
-See [server preview operations](docs/operations.md#server-preview) for configuration, service commands, and connectivity checks. No additional cloud firewall port needs to be opened for this URL. Port 3201 is an optional redirect to the address above if it becomes reachable; use the standard HTTPS URL to browse. This preview still uses the scripted demo teacher; the [public release work](docs/operations.md#before-public-or-paid-use) remains open.
+Optional **Listen** buttons use the device's speech synthesis where available. Microphone input and a dedicated server TTS service remain open integrations. Progress describes participation, not a validated CEFR score or pronunciation assessment.
 
-## What works
+## Foundation
 
-- Responsive onboarding, three practice scenarios, a conversation room, preferences, and a progress notebook.
-- A self-reported A1–C2 level, learning goal, first language, and daily time preference. Level changes apply to new lessons.
-- Input rules → Guard → Orchestrator → Prompt Builder → Teacher, with only the orchestrator allowed to mutate learning state.
-- Original scenario seeds for everyday, travel, and workplace practice, with level-specific prompt guidance. This is not a full CEFR curriculum.
-- Persisted lesson snapshots, participation tracking, active-time estimates, a bounded 12-message context, and structured memory.
-- Opaque guest cookies, owner-scoped storage, revision-based conflict detection, retry-safe turns, provider timeouts, bounded payloads, and a daily demo allowance.
-- Data export and deletion, explicit loading/error/empty states, keyboard support, and responsive layouts.
+- Separate domain, orchestration, provider, HTTP and SQLite storage modules.
+- Durable AI reservations, per-learner serialization and daily guest/global request limits before inference.
+- Atomic learning-state and completion commits, safe replay of saved results, and explicit retries for uncertain upstream failures.
+- Reported token usage recorded separately from unknown usage; request limits include failed attempts and are not billing estimates.
+- Schema-validated materials, detached lesson snapshots, bounded context, timeouts, output-size limits and concurrency caps.
+- Codex runs in a private temporary workspace with tools and user configuration disabled. Learner text is never executed.
+- Opaque guest cookies, exact-origin mutation checks, owner-scoped persistence, data export/deletion and expiry cleanup.
+- Responsive light/dark interface, keyboard navigation, reduced motion and self-hosted fonts.
 
-## Intentionally open integrations
+Guest identity lasts 30 days and has no account recovery or cross-device sync. SQLite is intended for this single-server preview, not a serverless or multi-host deployment. AI output can still contain mistakes; provenance and structural validation do not prove educational correctness.
 
-| Area                                 | Current behavior                                | Extension point                                                                    |
-| ------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------- |
-| AI teacher / semantic guard          | Scripted local providers                        | `GuardProvider`, `TeacherProvider`, server composition root                        |
-| Speech recognition / synthesis       | Not connected; microphone disabled              | `SpeechToTextProvider`, `TextToSpeechProvider`                                     |
-| PostgreSQL / Prisma                  | Durable single-process SQLite implementation    | `LearnerRepository` contract and migration notes                                   |
-| Accounts / recovery                  | Guest session only, 30-day expiry               | Replace identity resolution and associate guest data with an authenticated account |
-| Billing / real token usage           | No billing; estimated demo units only           | Reserve and reconcile usage around provider calls                                  |
-| CEFR assessment / adaptive materials | Self-reported level and authored scenario seeds | Versioned curriculum, assessment service, evaluation corpus                        |
-| Character artwork / visual identity  | Melissa name and neutral teacher identity       | Design tokens, persona guidelines, replaceable artwork                             |
-| PWA / streaming voice                | Responsive web only                             | Manifest/service worker and a separately measured audio transport                  |
-
-Unknown providers fail configuration validation instead of silently falling back. No empty API endpoints pretend to implement a service. See [integration instructions](docs/integrations.md).
-
-## Checks
+## Verification
 
 ```bash
-npm run check           # ESLint, strict TypeScript, backend tests
-npm run build           # Production build
-npx playwright install chromium
-npm run test:e2e        # Desktop and mobile tests at /
-npm run test:e2e:subpath # The same browser flows at /melissa
+npm run check
+npm run build
+npm run test:e2e
+npm run test:e2e:subpath
 npm run format:check
 ```
 
-Run the two browser suites sequentially: both use port 3100 and start/stop their own development server. The root-path suite uses `.data/e2e.db`; the subpath suite uses `.data/e2e-subpath.db`. Unit and HTTP tests use isolated in-memory databases; the persistence test also reopens a temporary disk database.
+Run browser suites sequentially; both use port 3100 and isolated test databases. Ordinary tests do not make paid calls. For an opt-in real provider check:
+
+```bash
+MELISSA_LIVE_CODEX=1 npx vitest run tests/providers.live.test.ts tests/learning.live.test.ts
+# With externally supplied API configuration:
+MELISSA_LIVE_API=1 npx vitest run tests/providers.live.test.ts tests/learning.live.test.ts
+```
 
 ## Project map
 
 ```text
-src/
-  app/                 Next.js pages, application theme, versioned API entry point
-  components/          Practice UI and browser API client
-  domain/              Types, validation, curriculum, prompts, provider/repository ports
-  server/
-    orchestrator.ts    Learning-state transitions and turn lifecycle
-    container.ts       Adapter selection and dependency wiring
-    config.ts          Validated server configuration
-    http/              Identity, request limits, origin checks, API error mapping
-    providers/         Deterministic demo Guard and Teacher
-    storage/           SQLite adapter and ordered schema migrations
-tests/                 Domain, storage, HTTP, configuration and browser checks
-docs/                  Architecture, API, operations, integration work and roadmap
+content/learning/      Original scenes, authoring rules and source provenance
+public/brand/         Melissa character and avatar
+public/fonts/         Self-hosted typefaces and licenses
+src/app/              Next.js entry points and modular visual styles
+src/components/       Studio, library, materials, practice, notebook and preferences
+src/domain/           Learning contracts, validation, curriculum and context
+src/server/
+  inference/          Durable request coordination and usage ledger
+  learning/           Knowledge retrieval and material generation
+  providers/          Demo, external API and isolated Codex adapters
+  storage/            SQLite and ordered migrations
+  http/               Authenticated versioned API boundary
+  orchestrator.ts     Learning transitions and atomic state ownership
+tests/                Unit, HTTP, provider, live-opt-in and browser checks
+deploy/               Server-specific HTTPS proxy and systemd templates
+docs/                 Architecture, operations, integrations and identity
 ```
 
-Read [architecture](docs/architecture.md) before adding stateful features, [API contracts](docs/api.md) before adding another client, and [the next development steps](docs/roadmap.md) before expanding scope. The concept brief (`instructions.txt`) and development plan (`plan.html`) retain the original scope and now use the Melissa name; the implementation status is documented here and in the roadmap.
+See [architecture](docs/architecture.md), [API](docs/api.md), [deployment](docs/operations.md), [lesson design](docs/learning.md), and [Melissa's identity](docs/brand/identity.md). The original [development plan](plan.html) remains the long-term brief; [the roadmap](docs/roadmap.md) records what this edition implements.

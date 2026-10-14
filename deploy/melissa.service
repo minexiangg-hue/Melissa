@@ -1,5 +1,5 @@
 # This preview unit is specific to the current Ubuntu server.
-# Build first, create .data and .next/cache as ubuntu, then install this unit.
+# Build first, create .data and .next-preview/cache as ubuntu, then install this unit.
 # Keep .env.preview private; it must set the public HTTPS origin, secure cookies,
 # and DATABASE_PATH inside the writable .data directory.
 [Unit]
@@ -16,13 +16,15 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=PATH=/home/ubuntu/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.env.preview
-ExecStartPre=/usr/bin/test -f /home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.next/BUILD_ID
+ExecStartPre=/usr/bin/test -f /home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.next-preview/BUILD_ID
 ExecStart=/home/ubuntu/.nvm/versions/node/v24.18.0/bin/node /home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3200
 Restart=on-failure
 RestartSec=5
 TimeoutStartSec=30
 TimeoutStopSec=30
+SuccessExitStatus=143
 KillSignal=SIGTERM
 KillMode=mixed
 UMask=0077
@@ -36,7 +38,7 @@ PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.data
-ReadWritePaths=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.next/cache
+ReadWritePaths=/home/ubuntu/ClaudeCodeWorkspace/YourEnglishTeacher/.next-preview/cache
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

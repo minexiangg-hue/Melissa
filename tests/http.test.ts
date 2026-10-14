@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SqliteLearnerRepository } from "@/server/storage/sqlite";
+import { MaterialService } from "@/server/learning/service";
+import { DemoMaterialProvider } from "@/server/learning/providers";
 import { Orchestrator } from "@/server/orchestrator";
 import { DemoGuard, DemoTeacher } from "@/server/providers/demo";
 import { profile } from "./helpers";
@@ -22,7 +24,11 @@ beforeAll(() => {
       repository,
       new DemoGuard(),
       new DemoTeacher(),
-      { dailyUnitLimit: 15000, timeoutMs: 100 },
+      {
+        dailyUnitLimit: 15000,
+        timeoutMs: 100,
+        materials: new MaterialService(new DemoMaterialProvider()),
+      },
     ),
   };
 });
@@ -198,7 +204,11 @@ describe("Melissa guest migration", () => {
       repository,
       new DemoGuard(),
       new DemoTeacher(),
-      { dailyUnitLimit: 15000, timeoutMs: 100 },
+      {
+        dailyUnitLimit: 15000,
+        timeoutMs: 100,
+        materials: new MaterialService(new DemoMaterialProvider()),
+      },
     );
     const started = service.startSession(guest.owner, 0, "everyday-b1");
     const before = await service.sendMessage(
@@ -301,5 +311,69 @@ describe("Melissa guest migration", () => {
     } finally {
       container.config = previous;
     }
+  });
+});
+
+describe("material HTTP flow", () => {
+  it("requires identity and a profile, then creates a durable lesson and rejects forged replay", async () => {
+    const { cookie, data } = await bootstrap();
+    const request = {
+      revision: data.state.revision,
+      requestId: randomUUID(),
+      goal: "travel",
+      topic: "A museum visit",
+    };
+    expect(
+      (await handleRequest(req("materials", "POST", request))).status,
+    ).toBe(401);
+    expect(
+      (await handleRequest(req("materials", "POST", request, cookie))).status,
+    ).toBe(422);
+    const configured = await (
+      await handleRequest(
+        req("profile", "PUT", { revision: 0, profile }, cookie),
+      )
+    ).json();
+    request.revision = configured.state.revision;
+    const created = await handleRequest(
+      req("materials", "POST", request, cookie),
+    );
+    expect(created.status).toBe(201);
+    const saved = await created.json();
+    expect(saved.state.materials[0].exercises.length).toBeGreaterThanOrEqual(3);
+    expect(saved.knowledge.seedCount).toBeGreaterThanOrEqual(12);
+    expect(saved.capabilities.materialGeneration).toBe(true);
+    const replay = await handleRequest(
+      req("materials", "POST", request, cookie),
+    );
+    expect((await replay.json()).state.materials).toEqual(
+      saved.state.materials,
+    );
+    expect(
+      (
+        await handleRequest(
+          req("materials", "POST", { ...request, topic: "changed" }, cookie),
+        )
+      ).status,
+    ).toBe(409);
+    const restored = await (
+      await handleRequest(req("state", "GET", undefined, cookie))
+    ).json();
+    expect(restored.state.materials).toEqual(saved.state.materials);
+    const session = await handleRequest(
+      req(
+        "sessions",
+        "POST",
+        {
+          revision: saved.state.revision,
+          lessonId: saved.state.materials[0].id,
+        },
+        cookie,
+      ),
+    );
+    expect(session.status).toBe(201);
+    expect(
+      (await session.json()).state.sessions[0].lesson.material.reading.text,
+    ).toBe(saved.state.materials[0].reading.text);
   });
 });

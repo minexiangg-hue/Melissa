@@ -6,9 +6,12 @@ import { AppError, assertRevision } from "@/domain/errors";
 import type { LearnerState } from "@/domain/models";
 import type { LearnerRepository } from "@/domain/ports";
 import { migrations } from "./migrations";
+import { SqliteInferenceLedger } from "../inference/ledger";
 
 export class SqliteLearnerRepository implements LearnerRepository {
   private readonly db: DatabaseSync;
+  readonly inference: SqliteInferenceLedger;
+  private lastPrunedAt = 0;
   constructor(
     path: string,
     private readonly now: () => number = Date.now,
@@ -38,10 +41,21 @@ export class SqliteLearnerRepository implements LearnerRepository {
       this.db.close();
       throw error;
     }
-    this.db
-      .prepare("DELETE FROM learners WHERE expires_at <= ?")
-      .run(this.now());
+    this.inference = new SqliteInferenceLedger(this.db, this.now);
+    this.pruneExpired();
   }
+  private pruneExpired() {
+    const now = this.now();
+    if (now - this.lastPrunedAt < 60000) return;
+    this.db.prepare("DELETE FROM learners WHERE expires_at <= ?").run(now);
+    this.db
+      .prepare(
+        "DELETE FROM inference_requests WHERE owner_hash IS NULL AND day < ?",
+      )
+      .run(new Date(now).toISOString().slice(0, 10));
+    this.lastPrunedAt = now;
+  }
+
   create(ownerHash: string, state: LearnerState, expiresAt: number) {
     this.db
       .prepare(
@@ -50,6 +64,7 @@ export class SqliteLearnerRepository implements LearnerRepository {
       .run(ownerHash, state.revision, JSON.stringify(state), expiresAt);
   }
   read(ownerHash: string): LearnerState | null {
+    this.pruneExpired();
     const row = this.db
       .prepare(
         "SELECT state FROM learners WHERE owner_hash = ? AND expires_at > ?",
@@ -59,9 +74,12 @@ export class SqliteLearnerRepository implements LearnerRepository {
     const state = JSON.parse(row.state) as LearnerState;
     if (state.schemaVersion !== 1)
       throw new Error("Unsupported learner data schema.");
+    // Released v1 aggregates predate generated materials; preserve their identity and history.
+    state.materials ??= [];
     return state;
   }
   expiresAt(ownerHash: string): number | null {
+    this.pruneExpired();
     const row = this.db
       .prepare(
         "SELECT expires_at FROM learners WHERE owner_hash = ? AND expires_at > ?",

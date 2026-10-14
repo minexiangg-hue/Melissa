@@ -1,4 +1,4 @@
-name: Verify foundation
+name: Verify Melissa
 on:
   push:
   pull_request:

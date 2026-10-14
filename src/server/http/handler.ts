@@ -9,6 +9,7 @@ import {
   startSessionSchema,
   updateProfileSchema,
 } from "@/domain/models";
+import { generateMaterialSchema } from "@/domain/learning/models";
 import { getContainer } from "../container";
 
 import {
@@ -84,7 +85,7 @@ export async function handleRequest(request: NextRequest) {
     }
     const path = request.nextUrl.pathname.replace(/^\/api\/v1\/?/, "");
     if (path === "health" && request.method === "GET")
-      return json({ status: "ok", mode: "demo" });
+      return json({ status: "ok", mode: config.TEACHER_PROVIDER ?? "demo" });
     const identity = resolveGuest(request, repository);
     const owner = identity?.owner;
     const secure = config.COOKIE_SECURE === "true";
@@ -109,6 +110,15 @@ export async function handleRequest(request: NextRequest) {
       const input = await readJson(request, updateProfileSchema);
       return json(
         orchestrator.updateProfile(owner, input.revision, input.profile),
+      );
+    }
+    if (path === "materials" && request.method === "POST") {
+      return json(
+        await orchestrator.generateMaterial(
+          owner,
+          await readJson(request, generateMaterialSchema),
+        ),
+        201,
       );
     }
     if (path === "sessions" && request.method === "POST") {

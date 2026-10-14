@@ -6,7 +6,7 @@ The cookie, not a client-supplied user ID, determines ownership. Session IDs are
 
 | Method | Path                     | Body                                                                | Response                                           |
 | ------ | ------------------------ | ------------------------------------------------------------------- | -------------------------------------------------- |
-| GET    | `/health`                | None                                                                | `{ "status": "ok", "mode": "demo" }`               |
+| GET    | `/health`                | None                                                                | `{ "status": "ok", "mode": "demo                   | codex | openai-compatible" }` |
 | POST   | `/bootstrap`             | `{}`                                                                | Snapshot; sets a guest cookie if absent or expired |
 | GET    | `/state`                 | None                                                                | Current snapshot                                   |
 | PUT    | `/profile`               | `{ "revision": 0, "profile": { ... } }`                             | Updated snapshot                                   |
@@ -15,7 +15,26 @@ The cookie, not a client-supplied user ID, determines ownership. Session IDs are
 | POST   | `/sessions/:id/finish`   | `{ "revision": 3 }`                                                 | Updated snapshot                                   |
 | DELETE | `/data`                  | `{ "revision": 4 }`                                                 | `{ "deleted": true }`; clears guest cookie         |
 
-`Snapshot` is defined in `src/domain/models.ts`: state, currently available lessons, capabilities, and the daily demo limit. Obtain revisions from the latest snapshot. A successful state mutation increments the revision once.
+`Snapshot` is defined in `src/domain/models.ts`: state (including saved materials), available starter lessons, capabilities, knowledge source/suggestion metadata, `aiUsage` (or null in demo), and the daily demo limit. `aiUsage` includes requests/limit, reported input/output tokens, and unknown-usage attempt count. The health mode identifies the configured adapter; it does not claim a continuous upstream health check. Obtain revisions from the latest snapshot. A successful state mutation increments the revision once.
+
+## Personal materials
+
+`POST /materials` accepts:
+
+```json
+{
+  "revision": 1,
+  "requestId": "<uuid>",
+  "goal": "work",
+  "topic": "Explaining a delayed project"
+}
+```
+
+`topic` is optional (defaults to an empty string) and is limited to 120 trimmed characters. Goal is required; level comes from the saved learner profile. The response is an updated snapshot with HTTP 201. A material includes reading, dialogue, vocabulary, multiple-choice exercises with answer explanations, three conversational objectives, source IDs, provider kind and creation metadata. `requestedTopic` preserves the replay input; `topic` records the resolved subject. Up to 30 generated lessons are retained per guest.
+
+Start a saved material using its `material-<uuid>` ID in `POST /sessions`. The session copies its content and level, so later profile changes do not rewrite the lesson. All generated material IDs are resolved inside the authenticated guest's data. Library material and source metadata are included in snapshot export; no extra public material endpoint exists.
+
+Successful duplicate material requests return the current snapshot without a new generation. Reusing that ID for a different topic or goal returns 409. Input is data for the curriculum writer, never instructions controlling tools or persistence.
 
 ## Profile
 
@@ -35,6 +54,8 @@ Display names: 1–40 trimmed characters. First language: `Chinese`, `English`, 
 
 Generate one `requestId` per submitted text and reuse it when retrying that same text. Successful duplicate message requests return the **current** snapshot without appending or charging again, including after session completion. Reusing the same request ID for different text returns 409.
 
+For network-response loss, retain the same request ID. If the server explicitly returns `RETRY_REQUIRED` (503), the prior attempt is final and still counts toward the AI allowance: keep the draft and generate a new ID for the next user-triggered attempt. Do not retry automatically.
+
 A stale revision returns 409. Fetch `/state`, preserve the user's draft, and retry only after reconciling with the current state. The web client does this automatically on conflicts. Concurrent identical submissions may initially produce a 409 before a subsequent retry sees the committed receipt.
 
 Starting the same already-active lesson with the current revision returns that active snapshot. Starting a different lesson while a session is active returns 409. Repeating finish on an already-completed owned session returns the current snapshot.
@@ -53,18 +74,18 @@ Starting the same already-active lesson with the current revision returns that a
 
 Validation errors additionally contain `fields`, a list of field paths. Raw submitted values are never echoed in errors.
 
-| Status | Meaning                                                                     |
-| ------ | --------------------------------------------------------------------------- |
-| 400    | Malformed/missing JSON                                                      |
-| 401    | Guest cookie absent, invalid, or expired                                    |
-| 403    | Disallowed request origin                                                   |
-| 404    | Endpoint, owned session, or available lesson not found                      |
-| 409    | Stale revision, incompatible session transition, or reused request ID       |
-| 413    | Request body over 16 KiB                                                    |
-| 415    | Non-JSON content type                                                       |
-| 422    | Invalid fields or blocked control delimiters                                |
-| 429    | Demo allowance, 40-turn session limit, or 100-session storage limit         |
-| 503    | Provider timeout, invalid output, or unavailability; no turn committed      |
-| 500    | Unexpected internal error; use the request ID to correlate safe server logs |
+| Status | Meaning                                                                               |
+| ------ | ------------------------------------------------------------------------------------- |
+| 400    | Malformed/missing JSON                                                                |
+| 401    | Guest cookie absent, invalid, or expired                                              |
+| 403    | Disallowed request origin                                                             |
+| 404    | Endpoint, owned session, or available lesson not found                                |
+| 409    | Stale revision, incompatible session transition, or reused request ID                 |
+| 413    | Request body over 16 KiB                                                              |
+| 415    | Non-JSON content type                                                                 |
+| 422    | Invalid fields or blocked control delimiters                                          |
+| 429    | Demo/AI daily allowance, 40-turn session, 100-session or 30-material storage limit    |
+| 503    | Provider timeout, invalid output, unavailability or RETRY_REQUIRED; no turn committed |
+| 500    | Unexpected internal error; use the request ID to correlate safe server logs           |
 
-Speech endpoints are intentionally absent. A request to an unimplemented endpoint returns 404 instead of a simulated transcript or audio response.
+Dedicated speech endpoints are absent; browser read-aloud runs through the device speech API. A request to an unimplemented endpoint returns 404 instead of a simulated transcript or audio response.

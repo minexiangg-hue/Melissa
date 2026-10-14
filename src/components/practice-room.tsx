@@ -1,285 +1,233 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, type FormEvent } from "react";
 import {
-  ArrowRightIcon,
+  ArrowLeftIcon,
   CheckIcon,
-  ChatBubbleIcon,
-  InfoCircledIcon,
   PaperPlaneIcon,
+  Pencil2Icon,
 } from "@radix-ui/react-icons";
-import type { Lesson, Session, Snapshot } from "@/domain/models";
-export function LessonPicker({
-  snapshot,
-  busy,
-  onStart,
-}: {
-  snapshot: Snapshot;
-  busy: boolean;
-  onStart: (id: string) => void;
-}) {
-  const [selected, setSelected] = useState(snapshot.lessons[0]!.id);
-  const lesson =
-    snapshot.lessons.find((item) => item.id === selected) ??
-    snapshot.lessons[0]!;
-  return (
-    <div className="lesson-layout enter">
-      <section className="lesson-feature">
-        <div className="section-kicker">A little practice, every day</div>
-        <h1>
-          Find your words.
-          <br />
-          <span>Make them yours.</span>
-        </h1>
-        <p className="lead">
-          A space to try, make mistakes, and feel a little more comfortable
-          speaking English.
-        </p>
-        <div
-          className="lesson-selection"
-          role="group"
-          aria-label="Choose a conversation"
-        >
-          {snapshot.lessons.map((item: Lesson) => (
-            <button
-              className={
-                lesson.id === item.id
-                  ? "lesson-option selected"
-                  : "lesson-option"
-              }
-              key={item.id}
-              aria-pressed={lesson.id === item.id}
-              onClick={() => setSelected(item.id)}
-            >
-              <span>
-                {item.goal === "everyday"
-                  ? "Everyday"
-                  : item.goal === "travel"
-                    ? "Travel"
-                    : "At work"}
-              </span>
-              <span className="option-icon">
-                {lesson.id === item.id ? <CheckIcon /> : <ArrowRightIcon />}
-              </span>
-            </button>
-          ))}
-        </div>
-        <div className="selected-lesson">
-          <div className="meta">
-            {lesson.level} practice · {snapshot.state.profile!.dailyMinutes}
-            -minute goal
-          </div>
-          <h2>{lesson.title}</h2>
-          <p>{lesson.description}</p>
-          <button
-            className="button primary"
-            disabled={busy}
-            onClick={() => onStart(lesson.id)}
-          >
-            {busy ? "Getting ready…" : "Start a conversation"}
-            <ArrowRightIcon />
-          </button>
-        </div>
-      </section>
-      <aside className="practice-note">
-        <div className="note-symbol">
-          <ChatBubbleIcon />
-        </div>
-        <h2>
-          Small steps.
-          <br />
-          More confidence.
-        </h2>
-        <p>
-          Try saying your answer out loud before you type. A simple sentence is
-          a good place to start.
-        </p>
-        <div className="note-divider" />
-        <h3>In this conversation</h3>
-        <ol className="objective-preview">
-          {lesson.objectives.map((objective, i) => (
-            <li key={objective.id}>
-              <span>0{i + 1}</span>
-              {objective.title}
-            </li>
-          ))}
-        </ol>
-        <div className="demo-note">
-          <InfoCircledIcon />
-          <p>
-            This preview uses a scripted teacher. Live AI and voice practice are
-            still to come.
-          </p>
-        </div>
-      </aside>
-    </div>
-  );
-}
+import type { Session } from "@/domain/models";
+import { MelissaAvatar } from "./brand";
+import { SpeechButton } from "./speech-button";
+
 export function PracticeRoom({
   session,
   busy,
+  draft,
+  onDraft,
   onSend,
   onFinish,
+  onBack,
 }: {
   session: Session;
   busy: boolean;
+  draft: string;
+  onDraft: (text: string) => void;
   onSend: (text: string) => Promise<boolean>;
   onFinish: () => void;
+  onBack: () => void;
 }) {
-  const [draft, setDraft] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const messageList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = messageList.current;
+    if (!list) return;
+    let atBottom = true;
+    const trackPosition = () => {
+      atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    };
+    const observer = new ResizeObserver(() => {
+      if (atBottom) list.scrollTop = list.scrollHeight;
+    });
+    list.addEventListener("scroll", trackPosition, { passive: true });
+    observer.observe(list);
+    return () => {
+      observer.disconnect();
+      list.removeEventListener("scroll", trackPosition);
+    };
+  }, []);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "instant", block: "nearest" });
   }, [session.messages.length, session.turnCount]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!draft.trim() || busy) return;
-    if (await onSend(draft.trim())) {
-      setDraft("");
+    const submitted = draft.trim();
+    if (await onSend(submitted)) {
       input.current?.focus();
     }
   }
+  function help() {
+    onDraft("Could you give me an example?");
+    input.current?.focus();
+  }
   return (
-    <div className="room-layout enter">
-      <section className="conversation" aria-label="Practice conversation">
-        <header className="conversation-header">
-          <div>
-            <span className="meta">{session.level} · Guided text practice</span>
-            <h1>{session.lesson.title}</h1>
-          </div>
-          <button
-            className="button secondary compact"
-            disabled={busy}
-            onClick={onFinish}
-          >
-            Finish practice
-          </button>
-        </header>
-        <div
-          className="messages"
-          role="log"
-          aria-label="Conversation messages"
-          aria-live="polite"
-          aria-relevant="additions text"
-        >
-          {session.memory.archivedMessages > 0 && (
-            <p className="context-note">
-              Earlier turns are condensed into your practice record. Showing the
-              latest conversation.
-            </p>
-          )}
-          {session.messages.map((message) => (
-            <article key={message.id} className={`message ${message.role}`}>
-              <div className="message-avatar" aria-hidden="true">
-                {message.role === "assistant" ? <ChatBubbleIcon /> : "You"}
-              </div>
-              <div className="message-body">
-                <span className="message-name">
-                  {message.role === "assistant" ? "Melissa" : "You"}
-                </span>
-                <p>{message.text}</p>
-              </div>
-            </article>
-          ))}
-          {busy && (
-            <p className="working" role="status">
-              Getting your next prompt ready…
-            </p>
-          )}
-          <div ref={bottom} />
-        </div>
-        <form className="composer" onSubmit={submit}>
-          <label htmlFor="reply">Your turn</label>
-          <textarea
-            ref={input}
-            id="reply"
-            value={draft}
-            maxLength={2000}
-            rows={3}
-            placeholder="Try saying it out loud, then type your answer…"
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                !e.shiftKey &&
-                !e.nativeEvent.isComposing
-              ) {
-                e.preventDefault();
-                e.currentTarget.form?.requestSubmit();
-              }
-            }}
-            aria-describedby="reply-hint"
-          />
-          <div className="composer-actions">
-            <span id="reply-hint">
-              Enter to send · Shift + Enter for a new line
-            </span>
-            <button
-              className="button primary compact"
-              disabled={busy || !draft.trim()}
-              type="submit"
-            >
-              Send
-              <PaperPlaneIcon />
-            </button>
-          </div>
-        </form>
-      </section>
-      <aside className="lesson-guide">
-        <span className="section-kicker">Your conversation guide</span>
-        <h2>
-          One thought <br />
-          at a time.
-        </h2>
-        <p>Keep it simple. You can ask for an example whenever you need one.</p>
-        <ol className="objectives">
-          {session.lesson.objectives.map((o, i) => (
-            <li
-              key={o.id}
-              className={
-                session.practicedObjectiveIds.includes(o.id) ? "practiced" : ""
-              }
-            >
-              <span className="objective-number">
-                {session.practicedObjectiveIds.includes(o.id) ? (
-                  <CheckIcon />
-                ) : (
-                  i + 1
-                )}
-              </span>
-              <span>
-                {o.title}
-                <small>
-                  {session.practicedObjectiveIds.includes(o.id)
-                    ? "Tried in this practice"
-                    : "Ready when you are"}
-                </small>
-              </span>
-            </li>
-          ))}
-        </ol>
-        <button
-          className="button secondary"
-          disabled={busy}
-          onClick={() => setDraft("Could you give me an example?")}
-        >
-          Help me get started
+    <div className="practice-page enter">
+      <div className="practice-topline">
+        <button className="text-button" onClick={onBack}>
+          <ArrowLeftIcon /> Your studio
         </button>
-        <div className="voice-note">
-          <InfoCircledIcon />
-          <div>
-            <strong>Voice practice is coming</strong>
+        <span>{session.level} / ONE CONVERSATION AT A TIME</span>
+      </div>
+      <div className="room-layout">
+        <section className="conversation" aria-label="Practice conversation">
+          <header className="conversation-header">
+            <div>
+              <p className="number-label">IN CONVERSATION WITH MELISSA</p>
+              <h1>{session.lesson.title}</h1>
+            </div>
+            <button
+              className="button secondary compact"
+              disabled={busy}
+              onClick={onFinish}
+            >
+              Finish practice <CheckIcon />
+            </button>
+          </header>
+          <div
+            className="messages"
+            ref={messageList}
+            role="log"
+            aria-label="Conversation messages"
+            aria-live="polite"
+            aria-relevant="additions text"
+          >
+            {session.memory.archivedMessages > 0 && (
+              <p className="context-note">
+                Earlier turns are condensed into your practice record. Showing
+                the latest conversation.
+              </p>
+            )}
+            {session.messages.map((message) => (
+              <article key={message.id} className={`message ${message.role}`}>
+                <div className="message-avatar" aria-hidden="true">
+                  {message.role === "assistant" ? (
+                    <MelissaAvatar size={46} />
+                  ) : (
+                    <span>Y</span>
+                  )}
+                </div>
+                <div className="message-body">
+                  <span className="message-name">
+                    {message.role === "assistant" ? "Melissa" : "You"}
+                  </span>
+                  <p>{message.text}</p>
+                  {message.role === "assistant" && (
+                    <SpeechButton text={message.text} />
+                  )}
+                </div>
+              </article>
+            ))}
+            {busy && (
+              <div className="working" role="status">
+                <span className="thinking-dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                Melissa is finding the right words…
+              </div>
+            )}
+            <div ref={bottom} />
+          </div>
+          <form className="composer" onSubmit={submit}>
+            <label htmlFor="reply">
+              Your turn <span>There’s no perfect way to begin.</span>
+            </label>
+            <div className="composer-input">
+              <textarea
+                ref={input}
+                id="reply"
+                value={draft}
+                maxLength={2000}
+                rows={3}
+                placeholder="Put a little of your world into words…"
+                onChange={(e) => onDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing
+                  ) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                aria-describedby="reply-hint"
+              />
+              <button
+                className="send-button"
+                disabled={busy || !draft.trim()}
+                type="submit"
+                aria-label="Send"
+              >
+                <PaperPlaneIcon />
+              </button>
+            </div>
+            <div className="composer-actions">
+              <span id="reply-hint">
+                Enter to send · Shift + Enter for a new line
+              </span>
+              <span>{draft.length} / 2,000</span>
+            </div>
+          </form>
+        </section>
+        <aside className="lesson-guide">
+          <span className="guide-symbol">
+            <Pencil2Icon />
+          </span>
+          <h2>
+            A little
+            <br />
+            <em>direction.</em>
+          </h2>
+          <p>One thought at a time. We’ll find the words together.</p>
+          <ol className="objectives">
+            {session.lesson.objectives.map((o, i) => (
+              <li
+                key={o.id}
+                className={
+                  session.practicedObjectiveIds.includes(o.id)
+                    ? "practiced"
+                    : ""
+                }
+              >
+                <span className="objective-number">
+                  {session.practicedObjectiveIds.includes(o.id) ? (
+                    <CheckIcon />
+                  ) : (
+                    String(i + 1).padStart(2, "0")
+                  )}
+                </span>
+                <span>
+                  {o.title}
+                  <small>
+                    {session.practicedObjectiveIds.includes(o.id)
+                      ? "Tried in this practice"
+                      : "Ready when you are"}
+                  </small>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <button className="button secondary" disabled={busy} onClick={help}>
+            Help me get started <Pencil2Icon />
+          </button>
+          <div className="guide-footnote">
+            <strong>A note from Melissa</strong>
             <p>
-              Microphone input and spoken replies aren’t connected in this
-              preview.
+              Making a mistake is a useful part of finding your voice. Try
+              first. We can refine it together.
             </p>
           </div>
-        </div>
-        <p className="field-help">
-          {session.turnCount} of 40 turns used. Checkmarks show participation,
-          not proficiency.
-        </p>
-      </aside>
+          <p className="field-help">
+            {session.turnCount} of 40 turns used. Checkmarks show participation,
+            not proficiency. Device voices are optional; microphone input is not
+            available yet.
+          </p>
+        </aside>
+      </div>
     </div>
   );
 }
