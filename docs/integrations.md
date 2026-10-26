@@ -38,7 +38,7 @@ The present retriever uses goal, topic terms, and level distance. If the collect
 
 ## Audio
 
-An optional Listen control already uses device/browser speech synthesis. It is user-initiated, cancellable, and hidden when unsupported; it is not a dedicated server voice. Server transcription and synthesis ports remain separate extension seams.
+Listen supports a self-hosted Kokoro CPU worker through a separate authenticated speech service. Browser/device synthesis remains an explicit fallback. Audio generation has its own durable daily allowance and single-worker reservation, separate from teacher calls; it does not change lesson progress. The initial implementation receives a complete bounded WAV before playback, rather than claiming low-latency streaming. See [audio integration](audio.md) and [worker setup](speech-worker.md). Server transcription remains unimplemented.
 
 For microphone input, add authenticated routes with MIME/duration/byte limits, usage reservation, deadlines, and a clear audio retention policy. Implement explicit permission, recording, stopping, transcribing, thinking, playback, and error states. Stop media tracks on cancellation/unmount and keep an editable transcript fallback. Change microphone permissions only with the recording implementation.
 

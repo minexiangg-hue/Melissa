@@ -6,6 +6,25 @@ const configSchema = z.object({
   TEACHER_PROVIDER: z
     .enum(["demo", "openai-compatible", "codex"])
     .default("demo"),
+  SPEECH_PROVIDER: z.enum(["device", "kokoro"]).default("device"),
+  SPEECH_BASE_URL: z.url().default("http://127.0.0.1:3210"),
+  SPEECH_API_TOKEN: z
+    .string()
+    .regex(/^[\x21-\x7e]{32,256}$/)
+    .optional(),
+  SPEECH_TIMEOUT_MS: z.coerce.number().int().min(100).max(90000).default(90000),
+  SPEECH_DAILY_REQUEST_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10000)
+    .default(100),
+  SPEECH_GLOBAL_DAILY_REQUEST_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100000)
+    .default(500),
   DATABASE_PATH: z.string().min(1).default(".data/teacher.db"),
   APP_ORIGIN: z.url().default("http://127.0.0.1:3000"),
   COOKIE_SECURE: z.enum(["true", "false"]).default("false"),
@@ -97,5 +116,20 @@ export function readConfig(
     throw new Error("CODEX_AUTH_PATH must be an absolute path.");
   if (config.CODEX_BINARY.includes("\0"))
     throw new Error("CODEX_BINARY is invalid.");
+  const speechEndpoint = new URL(config.SPEECH_BASE_URL);
+  if (
+    speechEndpoint.username ||
+    speechEndpoint.password ||
+    speechEndpoint.search ||
+    speechEndpoint.hash ||
+    !["https:", "http:"].includes(speechEndpoint.protocol) ||
+    (speechEndpoint.protocol === "http:" &&
+      !["127.0.0.1", "localhost", "[::1]"].includes(speechEndpoint.hostname))
+  )
+    throw new Error(
+      "SPEECH_BASE_URL requires HTTPS, or HTTP on a loopback host, without credentials, query, or fragment.",
+    );
+  if (config.SPEECH_PROVIDER === "kokoro" && !config.SPEECH_API_TOKEN?.trim())
+    throw new Error("SPEECH_API_TOKEN is required for Kokoro.");
   return config;
 }

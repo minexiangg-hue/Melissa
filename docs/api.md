@@ -88,4 +88,12 @@ Validation errors additionally contain `fields`, a list of field paths. Raw subm
 | 503    | Provider timeout, invalid output, unavailability or RETRY_REQUIRED; no turn committed |
 | 500    | Unexpected internal error; use the request ID to correlate safe server logs           |
 
-Dedicated speech endpoints are absent; browser read-aloud runs through the device speech API. A request to an unimplemented endpoint returns 404 instead of a simulated transcript or audio response.
+Transcription remains unimplemented. A request to an unimplemented endpoint returns 404 instead of a simulated transcript.
+
+## Speech synthesis
+
+`POST /api/v1/speech/synthesis` accepts strict JSON `{ "requestId": "UUID", "text": "saved passage" }`. A valid guest cookie and exact Origin are required. The text must be an exact substring of an assistant reply or the current guest's saved lesson reading/dialogue; arbitrary synthesis is rejected. Each passage is limited to 1,600 UTF-16 code units and 8 KiB. The client splits long readings without rewriting their text.
+
+When `SPEECH_PROVIDER=kokoro`, success returns `audio/wav`, `Cache-Control: no-store` and `X-Speech-Provider: kokoro`. The WAV is complete and validated before the response starts. No learner revision changes. `capabilities.textToSpeech` signals the configured server integration; it is not a live worker readiness probe. `speechToText` remains false.
+
+The audio budget defaults to 100 attempted generations per guest/day and 500 globally/day (UTC), with one active synthesis across the app database. Busy capacity detected by the app ledger is rejected before reservation; a later worker failure or busy response still consumes the reserved attempt. Failed reserved attempts consume allowance. A request ID can only be attempted once while retained; selecting Listen again starts an explicit new request. There is no hidden automatic retry or durable audio cache. Responses use the existing JSON error format for invalid text, unavailable voice, quota, identity and origin failures.

@@ -1,0 +1,33 @@
+.speech-control {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}
+.speech-control .listen-button {
+  min-height: 36px;
+  font-size: 12px;
+  gap: 7px;
+}
+.speech-voice-label {
+  color: var(--muted);
+  padding-left: 8px;
+  border-left: 1px solid var(--border-strong);
+  font-size: 12px;
+}
+.speech-control small {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.speech-control .speech-error {
+  color: var(--error);
+  flex-basis: 100%;
+}
+.speech-secondary {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .speech-control .listen-button {
+    min-height: 44px;
+  }
+}

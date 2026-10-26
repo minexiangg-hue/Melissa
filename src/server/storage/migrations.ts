@@ -36,4 +36,25 @@ export const migrations = [
         input_tokens = 0, output_tokens = 0, usage_unknown = 1 WHERE id = NEW.id;
     END;`,
   },
+  {
+    version: 3,
+    sql: `CREATE TABLE speech_requests (
+      id TEXT PRIMARY KEY,
+      owner_hash TEXT REFERENCES learners(owner_hash) ON DELETE SET NULL,
+      request_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'completed', 'failed')),
+      lease_until INTEGER NOT NULL,
+      input_characters INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE(owner_hash, request_id)
+    ) STRICT;
+    CREATE INDEX speech_day ON speech_requests(day);
+    CREATE INDEX speech_owner_day ON speech_requests(owner_hash, day);
+    CREATE INDEX speech_lease ON speech_requests(status, lease_until);
+    CREATE TRIGGER speech_forget AFTER UPDATE OF owner_hash ON speech_requests
+    WHEN NEW.owner_hash IS NULL BEGIN
+      UPDATE speech_requests SET request_id = '', input_characters = 0 WHERE id = NEW.id;
+    END;`,
+  },
 ];

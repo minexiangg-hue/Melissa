@@ -13,6 +13,7 @@ import {
 import type { Goal, Profile, Snapshot } from "@/domain/models";
 import type { LearningMaterial } from "@/domain/learning/models";
 import { api, ApiError } from "./api-client";
+import { SpeechProvider } from "./speech-context";
 import { BrandMark, MelissaAvatar } from "./brand";
 import { Onboarding } from "./onboarding";
 import { Studio } from "./studio";
@@ -37,6 +38,7 @@ export function TeacherApp() {
   const [notice, setNotice] = useState("");
   const [reconnectNeeded, setReconnectNeeded] = useState(false);
   const [recoveredDraft, setRecoveredDraft] = useState("");
+  const [speechSessionEpoch, setSpeechSessionEpoch] = useState(0);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const bootstrap = useRef<Promise<Snapshot> | null>(null);
   const lock = useRef(false);
@@ -280,6 +282,7 @@ export function TeacherApp() {
     pendingMessage.current = null;
     pendingMaterial.current = null;
     setReconnectNeeded(false);
+    setSpeechSessionEpoch((epoch) => epoch + 1);
     setRecoveredDraft(unsent);
     navigate("studio");
     setNotice(
@@ -297,6 +300,7 @@ export function TeacherApp() {
     await mutate(async () => {
       await api("data", "DELETE", { revision: snapshot.state.revision });
       setSnapshot(null);
+      setSpeechSessionEpoch((epoch) => epoch + 1);
       setReconnectNeeded(false);
       setRecoveredDraft("");
       pendingMessage.current = null;
@@ -310,234 +314,245 @@ export function TeacherApp() {
   const active = snapshot?.state.sessions.find((s) => s.status === "active");
   const profile = snapshot?.state.profile;
   return (
-    <div
-      className={`app-shell${view === "practice" && active ? " practice-active" : ""}`}
+    <SpeechProvider
+      enabled={snapshot?.capabilities.textToSpeech ?? false}
+      blocked={reconnectNeeded}
+      sessionEpoch={speechSessionEpoch}
+      onSessionExpired={() => {
+        setReconnectNeeded(true);
+        setError("Your guest session expired. Reconnect to continue.");
+      }}
     >
-      <a className="skip-link" href="#main">
-        Skip to your learning space
-      </a>
-      <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="Melissa home">
-          <BrandMark />
-          <span>
-            Melissa<span className="brand-period">.</span>
-          </span>
-        </Link>
-        <p className="brand-caption">A LITTLE MORE YOU</p>
-        <nav aria-label="Main navigation">
-          {(
-            [
-              { id: "studio", label: "Your studio", icon: HomeIcon },
-              { id: "library", label: "Lesson library", icon: ReaderIcon },
-              ...(active
-                ? [
-                    {
-                      id: "practice",
-                      label: "In conversation",
-                      icon: ChatBubbleIcon,
-                    },
-                  ]
-                : []),
-              { id: "notebook", label: "Your notebook", icon: BookmarkIcon },
-              { id: "preferences", label: "Preferences", icon: GearIcon },
-            ] as { id: View; label: string; icon: typeof HomeIcon }[]
-          ).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              aria-label={label}
-              aria-current={view === id ? "page" : undefined}
-              onClick={() => navigate(id)}
-              disabled={!profile}
-            >
-              <Icon />
-              <span className="desktop-nav-label">{label}</span>
-              <span className="mobile-nav-label" aria-hidden="true">
-                {
+      <div
+        className={`app-shell${view === "practice" && active ? " practice-active" : ""}`}
+      >
+        <a className="skip-link" href="#main">
+          Skip to your learning space
+        </a>
+        <aside className="sidebar">
+          <Link href="/" className="brand" aria-label="Melissa home">
+            <BrandMark />
+            <span>
+              Melissa<span className="brand-period">.</span>
+            </span>
+          </Link>
+          <p className="brand-caption">A LITTLE MORE YOU</p>
+          <nav aria-label="Main navigation">
+            {(
+              [
+                { id: "studio", label: "Your studio", icon: HomeIcon },
+                { id: "library", label: "Lesson library", icon: ReaderIcon },
+                ...(active
+                  ? [
+                      {
+                        id: "practice",
+                        label: "In conversation",
+                        icon: ChatBubbleIcon,
+                      },
+                    ]
+                  : []),
+                { id: "notebook", label: "Your notebook", icon: BookmarkIcon },
+                { id: "preferences", label: "Preferences", icon: GearIcon },
+              ] as { id: View; label: string; icon: typeof HomeIcon }[]
+            ).map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                aria-label={label}
+                aria-current={view === id ? "page" : undefined}
+                onClick={() => navigate(id)}
+                disabled={!profile}
+              >
+                <Icon />
+                <span className="desktop-nav-label">{label}</span>
+                <span className="mobile-nav-label" aria-hidden="true">
                   {
-                    studio: "Studio",
-                    library: "Lessons",
-                    practice: "Practice",
-                    notebook: "Notebook",
-                    preferences: "Settings",
-                  }[id]
-                }
-              </span>
-              {id === "practice" && <i className="active-dot" />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-note">
-          <span className="note-line" />
-          <p>
-            A little practice.
-            <br />A wider world.
-          </p>
-          <span className="sidebar-note-caption">
-            YOUR NEXT CHAPTER STARTS HERE.
-          </span>
-        </div>
-        <div className="sidebar-bottom">
-          {profile ? (
-            <button
-              className="learner-chip"
-              onClick={() => navigate("preferences")}
-            >
-              <span className="learner-initial">
-                {profile.displayName.slice(0, 1).toUpperCase()}
-              </span>
-              <span>
-                <strong>{profile.displayName}</strong>
-                <small>{profile.level} · Guest learner</small>
-              </span>
-              <ArrowTopRightIcon />
-            </button>
-          ) : (
-            <div className="sidebar-greeting">
-              <MelissaAvatar size={38} />
-              <span>A good place to begin.</span>
-            </div>
-          )}
-        </div>
-      </aside>
-      <div className="main-shell">
-        <header className="topbar">
-          <span>
-            {!profile
-              ? "YOUR ENGLISH COMPANION"
-              : view === "studio"
-                ? "MAKE A LITTLE SPACE FOR YOURSELF"
-                : view === "library"
-                  ? "CURIOSITY LOOKS GOOD ON YOU"
-                  : view === "practice"
-                    ? "GOOD CONVERSATIONS START SMALL"
-                    : view === "notebook"
-                      ? "THE LITTLE THINGS ADD UP"
-                      : "A SPACE THAT FEELS LIKE YOU"}
-          </span>
-          <div className="mode-badge">
-            <i />
-            {snapshot
-              ? teacherLabels[snapshot.capabilities.teacher]
-              : "Opening your space"}
+                    {
+                      studio: "Studio",
+                      library: "Lessons",
+                      practice: "Practice",
+                      notebook: "Notebook",
+                      preferences: "Settings",
+                    }[id]
+                  }
+                </span>
+                {id === "practice" && <i className="active-dot" />}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-note">
+            <span className="note-line" />
+            <p>
+              A little practice.
+              <br />A wider world.
+            </p>
+            <span className="sidebar-note-caption">
+              YOUR NEXT CHAPTER STARTS HERE.
+            </span>
           </div>
-        </header>
-        <main id="main" tabIndex={-1}>
-          {error && (
-            <div className="alert error" role="alert">
-              <span>{error}</span>
-              {!snapshot && (
-                <button
-                  className="text-button"
-                  onClick={() => window.location.reload()}
-                >
-                  <ReloadIcon /> Try again
-                </button>
-              )}
-            </div>
-          )}
-          {reconnectNeeded && snapshot && (
-            <section
-              className="reconnect-panel"
-              aria-label="Reconnect your guest session"
-            >
-              <h2>A fresh page is waiting.</h2>
-              <p>
-                Your guest session has expired. You can export the records still
-                visible here before opening a new session. Your unsent reply
-                will be kept for your next conversation.
-              </p>
-              <div>
-                <button
-                  className="button secondary compact"
-                  disabled={busy}
-                  onClick={() => downloadSnapshot(snapshot)}
-                >
-                  Export saved records
-                </button>
-                <button
-                  className="button primary compact"
-                  disabled={busy}
-                  onClick={() => void reconnect()}
-                >
-                  Reconnect with a new session <ReloadIcon />
-                </button>
+          <div className="sidebar-bottom">
+            {profile ? (
+              <button
+                className="learner-chip"
+                onClick={() => navigate("preferences")}
+              >
+                <span className="learner-initial">
+                  {profile.displayName.slice(0, 1).toUpperCase()}
+                </span>
+                <span>
+                  <strong>{profile.displayName}</strong>
+                  <small>{profile.level} · Guest learner</small>
+                </span>
+                <ArrowTopRightIcon />
+              </button>
+            ) : (
+              <div className="sidebar-greeting">
+                <MelissaAvatar size={38} />
+                <span>A good place to begin.</span>
               </div>
-            </section>
-          )}
-          {notice && (
-            <div className="alert notice" role="status">
-              {notice}
+            )}
+          </div>
+        </aside>
+        <div className="main-shell">
+          <header className="topbar">
+            <span>
+              {!profile
+                ? "YOUR ENGLISH COMPANION"
+                : view === "studio"
+                  ? "MAKE A LITTLE SPACE FOR YOURSELF"
+                  : view === "library"
+                    ? "CURIOSITY LOOKS GOOD ON YOU"
+                    : view === "practice"
+                      ? "GOOD CONVERSATIONS START SMALL"
+                      : view === "notebook"
+                        ? "THE LITTLE THINGS ADD UP"
+                        : "A SPACE THAT FEELS LIKE YOU"}
+            </span>
+            <div className="mode-badge">
+              <i />
+              {snapshot
+                ? teacherLabels[snapshot.capabilities.teacher]
+                : "Opening your space"}
             </div>
-          )}
-          {!snapshot ? (
-            <div className="loading-state" role="status">
-              <p className="eyebrow">A LITTLE SPACE FOR YOUR ENGLISH</p>
-              <h1>{error ? "Let’s reconnect." : "Make yourself at home."}</h1>
-              <div className="skeleton-line" />
-              <div className="skeleton-line short" />
-              <div className="skeleton-grid">
-                <div />
-                <div />
+          </header>
+          <main id="main" tabIndex={-1}>
+            {error && (
+              <div className="alert error" role="alert">
+                <span>{error}</span>
+                {!snapshot && (
+                  <button
+                    className="text-button"
+                    onClick={() => window.location.reload()}
+                  >
+                    <ReloadIcon /> Try again
+                  </button>
+                )}
               </div>
-              <p>
-                {error
-                  ? "Refresh the page to try again."
-                  : "Melissa is opening your practice space…"}
-              </p>
-            </div>
-          ) : !profile ? (
-            <Onboarding busy={busy} onSave={saveProfile} />
-          ) : view === "library" ? (
-            <LessonLibrary
-              snapshot={snapshot}
-              busy={busy}
-              onStart={(id) => void startLesson(id)}
-              onGenerate={generateMaterial}
-            />
-          ) : view === "practice" && active ? (
-            <PracticeRoom
-              key={active.id}
-              session={active}
-              busy={busy}
-              draft={drafts[active.id] ?? ""}
-              onDraft={(text) =>
-                setDrafts((previous) => ({ ...previous, [active.id]: text }))
-              }
-              onSend={sendMessage}
-              onFinish={() => void finishPractice()}
-              onBack={() => navigate("studio")}
-            />
-          ) : view === "notebook" ? (
-            <ProgressView
-              state={snapshot.state}
-              onPractice={() => navigate(active ? "practice" : "studio")}
-            />
-          ) : view === "preferences" ? (
-            <Preferences
-              snapshot={snapshot}
-              busy={busy}
-              onSave={saveProfile}
-              onExport={exportData}
-              onDelete={() => void clearData()}
-            />
-          ) : (
-            <Studio
-              snapshot={snapshot}
-              busy={busy}
-              onStart={(id) => void startLesson(id)}
-              onResume={() => navigate("practice")}
-              onLibrary={() => navigate("library")}
-              onNotebook={() => navigate("notebook")}
-            />
-          )}
-        </main>
-        <footer className="app-footer">
-          <span>Made for the wonderfully imperfect way we learn.</span>
-          <span>
-            Melissa <span aria-hidden="true">✳</span> English, in good company.
-          </span>
-        </footer>
+            )}
+            {reconnectNeeded && snapshot && (
+              <section
+                className="reconnect-panel"
+                aria-label="Reconnect your guest session"
+              >
+                <h2>A fresh page is waiting.</h2>
+                <p>
+                  Your guest session has expired. You can export the records
+                  still visible here before opening a new session. Your unsent
+                  reply will be kept for your next conversation.
+                </p>
+                <div>
+                  <button
+                    className="button secondary compact"
+                    disabled={busy}
+                    onClick={() => downloadSnapshot(snapshot)}
+                  >
+                    Export saved records
+                  </button>
+                  <button
+                    className="button primary compact"
+                    disabled={busy}
+                    onClick={() => void reconnect()}
+                  >
+                    Reconnect with a new session <ReloadIcon />
+                  </button>
+                </div>
+              </section>
+            )}
+            {notice && (
+              <div className="alert notice" role="status">
+                {notice}
+              </div>
+            )}
+            {!snapshot ? (
+              <div className="loading-state" role="status">
+                <p className="eyebrow">A LITTLE SPACE FOR YOUR ENGLISH</p>
+                <h1>{error ? "Let’s reconnect." : "Make yourself at home."}</h1>
+                <div className="skeleton-line" />
+                <div className="skeleton-line short" />
+                <div className="skeleton-grid">
+                  <div />
+                  <div />
+                </div>
+                <p>
+                  {error
+                    ? "Refresh the page to try again."
+                    : "Melissa is opening your practice space…"}
+                </p>
+              </div>
+            ) : !profile ? (
+              <Onboarding busy={busy} onSave={saveProfile} />
+            ) : view === "library" ? (
+              <LessonLibrary
+                snapshot={snapshot}
+                busy={busy}
+                onStart={(id) => void startLesson(id)}
+                onGenerate={generateMaterial}
+              />
+            ) : view === "practice" && active ? (
+              <PracticeRoom
+                key={active.id}
+                session={active}
+                busy={busy}
+                draft={drafts[active.id] ?? ""}
+                onDraft={(text) =>
+                  setDrafts((previous) => ({ ...previous, [active.id]: text }))
+                }
+                onSend={sendMessage}
+                onFinish={() => void finishPractice()}
+                onBack={() => navigate("studio")}
+              />
+            ) : view === "notebook" ? (
+              <ProgressView
+                state={snapshot.state}
+                onPractice={() => navigate(active ? "practice" : "studio")}
+              />
+            ) : view === "preferences" ? (
+              <Preferences
+                snapshot={snapshot}
+                busy={busy}
+                onSave={saveProfile}
+                onExport={exportData}
+                onDelete={() => void clearData()}
+              />
+            ) : (
+              <Studio
+                snapshot={snapshot}
+                busy={busy}
+                onStart={(id) => void startLesson(id)}
+                onResume={() => navigate("practice")}
+                onLibrary={() => navigate("library")}
+                onNotebook={() => navigate("notebook")}
+              />
+            )}
+          </main>
+          <footer className="app-footer">
+            <span>Made for the wonderfully imperfect way we learn.</span>
+            <span>
+              Melissa <span aria-hidden="true">✳</span> English, in good
+              company.
+            </span>
+          </footer>
+        </div>
       </div>
-    </div>
+    </SpeechProvider>
   );
 }

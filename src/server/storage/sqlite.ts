@@ -6,11 +6,13 @@ import { AppError, assertRevision } from "@/domain/errors";
 import type { LearnerState } from "@/domain/models";
 import type { LearnerRepository } from "@/domain/ports";
 import { migrations } from "./migrations";
+import { SqliteSpeechLedger } from "../speech/ledger";
 import { SqliteInferenceLedger } from "../inference/ledger";
 
 export class SqliteLearnerRepository implements LearnerRepository {
   private readonly db: DatabaseSync;
   readonly inference: SqliteInferenceLedger;
+  readonly speech: SqliteSpeechLedger;
   private lastPrunedAt = 0;
   constructor(
     path: string,
@@ -42,6 +44,7 @@ export class SqliteLearnerRepository implements LearnerRepository {
       throw error;
     }
     this.inference = new SqliteInferenceLedger(this.db, this.now);
+    this.speech = new SqliteSpeechLedger(this.db, this.now);
     this.pruneExpired();
   }
   private pruneExpired() {
@@ -53,6 +56,9 @@ export class SqliteLearnerRepository implements LearnerRepository {
         "DELETE FROM inference_requests WHERE owner_hash IS NULL AND day < ?",
       )
       .run(new Date(now).toISOString().slice(0, 10));
+    this.db
+      .prepare("DELETE FROM speech_requests WHERE day < ? AND lease_until <= ?")
+      .run(new Date(now).toISOString().slice(0, 10), now);
     this.lastPrunedAt = now;
   }
 

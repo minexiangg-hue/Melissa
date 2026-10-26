@@ -65,3 +65,27 @@ it("supports bounded Codex settings and rejects invalid resource limits", () => 
     "PROVIDER_TIMEOUT_MS",
   );
 });
+
+it("requires private Kokoro credentials and a safe bounded speech endpoint", () => {
+  expect(readConfig({}).SPEECH_PROVIDER).toBe("device");
+  expect(() => readConfig({ SPEECH_PROVIDER: "kokoro" })).toThrow(
+    "SPEECH_API_TOKEN",
+  );
+  const config = readConfig({
+    SPEECH_PROVIDER: "kokoro",
+    SPEECH_API_TOKEN: "a".repeat(32),
+  });
+  expect(config.SPEECH_BASE_URL).toBe("http://127.0.0.1:3210");
+  for (const url of [
+    "http://remote.example",
+    "https://user:secret@host.example",
+    "http://localhost/?token=secret",
+  ]) {
+    expect(() => readConfig({ SPEECH_BASE_URL: url })).toThrow(
+      "SPEECH_BASE_URL",
+    );
+  }
+  expect(() => readConfig({ SPEECH_TIMEOUT_MS: "90001" })).toThrow(
+    "SPEECH_TIMEOUT_MS",
+  );
+});

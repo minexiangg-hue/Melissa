@@ -103,6 +103,12 @@ Codex and HTTP adapters cap concurrency, input/output bytes and elapsed time. Co
 
 ## Observability and remaining boundaries
 
-API responses include a correlation ID. Unexpected errors log only event, error class and correlation ID. Prompts, transcripts, auth material and raw provider response bodies are not logged. The application does not yet implement account recovery, entitlement billing, multi-host storage, a dedicated TTS/STT pipeline, or formal proficiency assessment.
+API responses include a correlation ID. Unexpected errors log only event, error class and correlation ID. Prompts, transcripts, auth material and raw provider response bodies are not logged. The application does not yet implement account recovery, entitlement billing, multi-host storage, microphone input/STT, or formal proficiency assessment.
 
 Bootstrap is rate-limited by Nginx; inference is additionally bounded by durable guest/global quotas. A larger public launch needs account abuse controls, measured load limits, monitoring and external-provider data-retention decisions. Current TLS, origin checks, opaque cookies and CSP protections are a foundation rather than a compliance certification.
+
+## Local Kokoro voice
+
+The optional CPU speech service has its own systemd unit and private environment. Follow [speech worker deployment](speech-worker.md) and [audio configuration](audio.md). Start and verify the worker before enabling `SPEECH_PROVIDER=kokoro` in Melissa. It is loopback-only and does not require another public port. Keep model preparation separate from serving requests.
+
+SQL migration 3 adds a separate speech-attempt table. Make an online SQLite backup before the first upgraded startup; old binaries reject newer schemas. For rollback, stop the app and restore the matching database backup together with its original build/settings. Do not copy a WAL database file on its own or restore over a running database.

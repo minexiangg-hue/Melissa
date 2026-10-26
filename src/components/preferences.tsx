@@ -82,13 +82,23 @@ export function Preferences({
               </div>
               <div>
                 <dt>Read aloud</dt>
-                <dd>Device voice, where available</dd>
+                <dd>
+                  {snapshot.capabilities.textToSpeech
+                    ? "Melissa voice · Kokoro"
+                    : "Device voice, where available"}
+                </dd>
               </div>
               <div>
                 <dt>Microphone</dt>
                 <dd>Not connected yet</dd>
               </div>
             </dl>
+            {snapshot.capabilities.textToSpeech && (
+              <p className="field-help">
+                Melissa uses an AI-generated voice. Device voice remains an
+                optional alternative if it is unavailable.
+              </p>
+            )}
             <p className="field-help">
               <InfoCircledIcon />
               {snapshot.capabilities.teacher === "demo"

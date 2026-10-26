@@ -77,7 +77,7 @@ export interface Capabilities {
   teacher: "demo" | "openai-compatible" | "codex";
   materialGeneration: boolean;
   speechToText: false;
-  textToSpeech: false;
+  textToSpeech: boolean;
   accounts: false;
   billing: false;
 }

@@ -38,7 +38,7 @@ For an external API, set `TEACHER_PROVIDER=openai-compatible`, `LLM_BASE_URL`, `
 
 The app includes 12 original lesson seeds, level-specific writing guidance, and reviewed source notes with provenance. Real AI writes new materials tailored to the requested topic and level; the demo selects authored samples. Source material and maintenance instructions live in [content/learning](content/learning/README.md).
 
-Optional **Listen** buttons use the device's speech synthesis where available. Microphone input and a dedicated server TTS service remain open integrations. Progress describes participation, not a validated CEFR score or pronunciation assessment.
+Optional **Listen** buttons can use a self-hosted Kokoro voice, with explicit device read-aloud as a fallback. See [audio setup and boundaries](docs/audio.md). Microphone input and transcription remain open integrations. Progress describes participation, not a validated CEFR score or pronunciation assessment.
 
 ## Foundation
 
@@ -84,9 +84,11 @@ src/server/
   inference/          Durable request coordination and usage ledger
   learning/           Knowledge retrieval and material generation
   providers/          Demo, external API and isolated Codex adapters
+  speech/             Kokoro transport, owned-text authorization and audio limits
   storage/            SQLite and ordered migrations
   http/               Authenticated versioned API boundary
   orchestrator.ts     Learning transitions and atomic state ownership
+services/speech/      Isolated CPU Kokoro worker and pinned model preparation
 tests/                Unit, HTTP, provider, live-opt-in and browser checks
 deploy/               Server-specific HTTPS proxy and systemd templates
 docs/                 Architecture, operations, integrations and identity

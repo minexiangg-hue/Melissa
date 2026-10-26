@@ -2,9 +2,9 @@
 
 ## Current scope
 
-Melissa now supports real text tutoring and custom lesson generation through either an external OpenAI-compatible API or a local authenticated Codex CLI. An explicit offline `demo` mode remains for development and credential-free tests. The application includes a persistent lesson library, reading and exercises, guided conversation, progress, an illustrated Melissa character, and optional device read-aloud.
+Melissa now supports real text tutoring and custom lesson generation through either an external OpenAI-compatible API or a local authenticated Codex CLI. An explicit offline `demo` mode remains for development and credential-free tests. The application includes a persistent lesson library, reading and exercises, guided conversation, progress, an illustrated Melissa character, and optional Kokoro or device read-aloud.
 
-The original plan's speaking-first experience is still a direction, not a completed voice product. Microphone input, transcription, a dedicated Melissa voice, formal proficiency assessment, accounts, and payments are not implemented.
+The original plan's speaking-first experience is still a direction, not a completed voice product. Microphone input, transcription, formal proficiency assessment, accounts, and payments are not implemented. A dedicated self-hosted Kokoro voice is available as an optional TTS integration.
 
 ## Boundaries
 
@@ -22,7 +22,9 @@ flowchart TD
   API --> VALIDATE
   VALIDATE --> COMMIT[Atomic learner update and request completion]
   COMMIT --> DB[(SQLite learner aggregate and request ledger)]
-  UI --> VOICE[Optional browser speech synthesis]
+  HTTP --> SPEECH[Owned text and separate audio budget]
+  SPEECH --> KOKORO[Local Kokoro CPU worker]
+  UI --> VOICE[Explicit device voice fallback]
 ```
 
 - `domain/` defines provider-independent models, validation, participation rules, and prompt construction. It has no Next.js, filesystem, credentials, or database dependency.
@@ -89,4 +91,4 @@ For hosted scale, migrate both the aggregate repository and durable inference un
 
 The app supports `/` and a configured build-time/runtime `NEXT_PUBLIC_BASE_PATH`, currently `/melissa` on the HTTPS preview. Pages, assets, and versioned API calls use the same prefix; the proxy preserves it. `APP_ORIGIN` remains the origin without a path. See [operations](operations.md).
 
-Read-aloud uses browser `speechSynthesis` after a user gesture, offers cancellation, and handles unavailable voices. Voice availability and quality vary by device; there is no server TTS adapter or dedicated Melissa voice. The application does not request microphone access. Current turn timing measures text generation, not the original plan's speech-to-speech latency target.
+Read-aloud uses the configured Kokoro worker or device speech after a user gesture. The server verifies owned text, reserves separate durable audio allowance, and validates the complete WAV before playback. No lesson revision changes. The shared client player supports cancellation, mobile playback gestures, and an explicit device fallback; long readings are split into bounded passages. See [audio boundaries](audio.md). Microphone access remains disabled. Text and synthesis timings do not establish the original plan's complete speech-to-speech latency target.

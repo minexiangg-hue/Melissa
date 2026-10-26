@@ -223,8 +223,8 @@ export function PracticeRoom({
           </div>
           <p className="field-help">
             {session.turnCount} of 40 turns used. Checkmarks show participation,
-            not proficiency. Device voices are optional; microphone input is not
-            available yet.
+            not proficiency. Use Listen to hear a reply. Device voice is an
+            optional alternative; microphone input is not available yet.
           </p>
         </aside>
       </div>

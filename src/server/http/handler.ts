@@ -9,6 +9,7 @@ import {
   startSessionSchema,
   updateProfileSchema,
 } from "@/domain/models";
+import { speechRequestSchema } from "@/domain/speech";
 import { generateMaterialSchema } from "@/domain/learning/models";
 import { getContainer } from "../container";
 
@@ -75,7 +76,7 @@ export async function handleRequest(request: NextRequest) {
       headers: { "Cache-Control": "no-store", "X-Request-Id": requestId },
     });
   try {
-    const { config, repository, orchestrator } = getContainer();
+    const { config, repository, orchestrator, speech } = getContainer();
     if (request.method !== "GET") {
       if (
         request.headers.get("origin") !== config.APP_ORIGIN ||
@@ -106,6 +107,25 @@ export async function handleRequest(request: NextRequest) {
       );
     if (path === "state" && request.method === "GET")
       return json(orchestrator.snapshot(owner));
+    if (path === "speech/synthesis" && request.method === "POST") {
+      const input = await readJson(request, speechRequestSchema);
+      if (!speech)
+        throw new AppError(
+          "PROVIDER_UNAVAILABLE",
+          "Melissa’s voice is not configured. You can use your device voice.",
+          503,
+        );
+      const result = await speech.synthesize(owner, input, request.signal);
+      return new NextResponse(result.audio, {
+        headers: {
+          "Content-Type": result.mimeType,
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+          "X-Request-Id": requestId,
+          "X-Speech-Provider": "kokoro",
+        },
+      });
+    }
     if (path === "profile" && request.method === "PUT") {
       const input = await readJson(request, updateProfileSchema);
       return json(
@@ -144,6 +164,7 @@ export async function handleRequest(request: NextRequest) {
     if (path === "data" && request.method === "DELETE") {
       const input = await readJson(request, mutationSchema);
       orchestrator.deleteData(owner, input.revision);
+      speech?.cancel(owner);
       const response = json({ deleted: true });
       clearGuestCookie(response, GUEST_COOKIE, secure);
       clearGuestCookie(response, LEGACY_GUEST_COOKIE, secure);

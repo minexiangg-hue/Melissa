@@ -59,6 +59,7 @@ export class Orchestrator {
       teacherKind?: Snapshot["capabilities"]["teacher"];
       materials?: MaterialService;
       inference?: InferenceCoordinator;
+      textToSpeech?: boolean;
     },
   ) {}
   private now() {
@@ -101,6 +102,7 @@ export class Orchestrator {
       capabilities: {
         ...defaultCapabilities,
         teacher: this.options.teacherKind ?? "demo",
+        textToSpeech: this.options.textToSpeech ?? false,
       },
       knowledge: knowledgeOverview(
         state.profile?.level ?? "B1",

@@ -7,3 +7,5 @@ instructions.txt
 playwright-report
 test-results
 next-env.d.ts
+
+__pycache__
